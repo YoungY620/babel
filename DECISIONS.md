@@ -21,10 +21,12 @@
 音频管线。长视频不托管（2GB 放不下 720p+ 长片），如需视频版走
 YouTube/B 站外链。
 
-## D4 调度：GitHub Actions 定时 + 本机 self-hosted runner
+## D4 调度：GitHub Actions 编排 + Ubuntu self-hosted runner
 
-GitHub 只做调度（cron），计算（whisper/TTS，数小时级）在用户自己的 Mac 上，
-零成本。每周二 12:00（北京）首跑，失败当天 17:00 重试，之后每天 12:00/17:00，
+GitHub Actions 负责调度、重试与发布。计算在与 Research Agent 共用的阿里云
+Ubuntu x86_64 服务器上，通过独立用户和 systemd runner 服务执行。
+只支持 Python 3.12 与 CPU int8 faster-whisper；默认单集、单转录进程、两线程。
+移除 MLX、Homebrew 和旧 CLI 别名，不保留旧平台兼容层。每周二 12:00（北京）首跑，失败当天 17:00 重试，之后每天 12:00/17:00，
 直到本周成功（state.json 按 ISO 周去重）。
 
 ## D5 周期选集：全量未处理 + 联合上限
@@ -60,7 +62,7 @@ git 身份只用 noreply 邮箱；已重写历史抹除早期含真实邮箱的�
 
 ## D9 monorepo：moon 轻量使用
 
-moon 只负责项目/任务登记与调度（apps/pipeline、apps/web、apps/ios），
+moon 只负责项目/任务登记与调度（根项目、apps/pipeline、apps/web），
 不开工具链托管、不用其缓存（流水线产物不适合进 moon 缓存，幂等由各
 脚本按产物存在性判断）。
 

@@ -1,15 +1,30 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
-
 project:
   name: 'pipeline'
-  description: '音频/视频 → 中文音频转换与 RSS 发布流水线（faster-whisper + LLM 翻译 + edge-tts）'
-
+  description: 'Ubuntu CPU 音频转换、RSS 与发布流水线'
 tags: ['python']
-
 tasks:
+  setup:
+    command: 'bash ../../scripts/setup_pipeline.sh'
+    options:
+      cache: false
+  check:
+    command: 'python3 -m compileall -q pipeline'
+    options:
+      cache: false
+  test:
+    command: 'python3 -m unittest discover -s tests'
+    options:
+      cache: false
   convert:
     command: './.venv/bin/python pipeline/convert.py'
+    options:
+      cache: false
   feed:
     command: './.venv/bin/python pipeline/build_feed.py'
+    options:
+      cache: false
   publish:
     command: 'bash pipeline/publish.sh'
+    options:
+      cache: false

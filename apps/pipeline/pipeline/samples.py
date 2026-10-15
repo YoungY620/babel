@@ -6,8 +6,6 @@ Usage: samples.py <slug> [--seconds 60]
 """
 import argparse, json, subprocess, tempfile
 from pathlib import Path
-import os as _os
-_os.environ["PATH"] = "/opt/homebrew/bin" + _os.pathsep + _os.environ.get("PATH", "")  # 规避 ~/.local/bin 下不可执行的 x86 ffmpeg
 
 ROOT = Path(__file__).resolve().parent.parent
 

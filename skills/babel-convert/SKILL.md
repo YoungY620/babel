@@ -11,7 +11,7 @@ description: 巴别塔 Babel — 把已抓取的英文音频转成中文配音�
 cd apps/pipeline
 export OPENAI_API_KEY=...            # 翻译需要；OPENAI_BASE_URL / TRANSLATE_MODEL 可选
 .venv/bin/python pipeline/convert.py --slug <slug>
-# 或直接给新源：--index N / --url URL / --next（最新未处理的一集）
+# 或直接给新源：--index N / --url URL / --cycle（本周期全部未处理单集）
 ```
 
 等价的分步命令：`transcribe.py`（faster-whisper large-v3-turbo）→

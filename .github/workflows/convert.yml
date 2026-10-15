@@ -28,13 +28,14 @@ concurrency:        # 防重入：同一时刻只允许一个周期在跑，后�
 
 jobs:
   convert:
-    runs-on: [self-hosted, macOS]
+    runs-on: [self-hosted, Linux, X64, babel]
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      CONVERT_WORKERS: "4"        # 多集并行（MLX 转录走 GPU 极快，瓶颈在 XTTS 多开几车道）
-      WHISPER_BACKEND: "mlx"      # Apple GPU 转录（约 18x 实时）；无 mlx 环境时自动回退 ct2
+      CONVERT_WORKERS: "1"
+      TRANSCRIBE_JOBS: "1"
+      OMP_NUM_THREADS: "2"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,20 +53,17 @@ jobs:
           echo "week=$WEEK last=$LAST"
           if [ "$LAST" = "$WEEK" ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
 
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pnpm install --frozen-lockfile
       - name: ensure venv
         if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'
-        working-directory: apps/pipeline
-        run: |
-          if [ ! -x .venv/bin/python ]; then
-            PY=$(command -v /opt/homebrew/bin/python3.12 || command -v python3)
-            "$PY" -m venv .venv
-            .venv/bin/pip install "numpy<2" edge-tts faster-whisper mutagen yt-dlp \
-              resemblyzer "coqui-tts[codec]" "transformers>=4.57,<5" "setuptools<81" pypinyin
-            curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos \
-              -o .venv/bin/yt-dlp && chmod +x .venv/bin/yt-dlp
-          fi
-          .venv/bin/python -c "import mlx_whisper" 2>/dev/null || \
-            .venv/bin/pip install -q mlx-whisper
+        run: pnpm moon run pipeline:setup
 
       - name: convert
         if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'

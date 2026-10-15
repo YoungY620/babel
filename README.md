@@ -17,12 +17,11 @@
 apps/
   pipeline/    转换流水线（核心）：抓取 → 转录 → 说话人分离 → 翻译 → 克隆配音
                → 文字版润色 → 发布（Pages RSS/播放器 + Releases 音频）
-  ios/         （规划中）iOS 播客客户端
   web/         （规划中）产品介绍页 + Web 播客客户端
 skills/        babel-fetch / babel-convert / babel-humanize / babel-publish
-scripts/       cookies_refresh.sh（YouTube cookies）、privacy_check.sh（隐私扫描）
+scripts/       setup_pipeline.sh（Ubuntu Python 环境）、cookies_refresh.sh（YouTube cookies）、privacy_check.sh（隐私扫描）
 .github/workflows/
-  convert.yml  每周定时转换（本机 self-hosted runner 执行）
+  convert.yml  每周定时转换（Ubuntu self-hosted runner 执行）
   pages.yml    Pages 部署
 ```
 
@@ -33,11 +32,10 @@ pnpm install
 git config core.hooksPath .githooks   # 启用推送前隐私拦截
 
 cd apps/pipeline
-/opt/homebrew/bin/python3.12 -m venv .venv   # 需要 3.10–3.12
-.venv/bin/pip install "numpy<2" edge-tts faster-whisper mutagen yt-dlp \
-  resemblyzer "coqui-tts[codec]" "transformers>=4.57,<5" "setuptools<81" pypinyin mlx-whisper
-curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos \
-  -o .venv/bin/yt-dlp && chmod +x .venv/bin/yt-dlp
+# Ubuntu Linux，Python 3.12、FFmpeg、Node 22、pnpm 10
+cd ../..
+pnpm moon run pipeline:setup
+cd apps/pipeline
 cp config.env.example config.env   # 填 GitHub 账号信息
 export OPENAI_API_KEY=...          # 翻译/润色用
 export ELEVENLABS_API_KEY=...      # 可选：声纹克隆首选后端
@@ -67,11 +65,11 @@ bash pipeline/publish.sh                        # 发布到 Pages + Releases
 
 ## 定时自动转换
 
-1. 仓库 Settings → Actions → Runners 注册本机 self-hosted runner 并常驻运行
+1. 仓库 Settings → Actions → Runners 注册 Ubuntu self-hosted runner 并常驻运行
 2. 仓库 Secrets 添加 `OPENAI_API_KEY`（必需）、`ELEVENLABS_API_KEY`（可选）
 3. 每周二 12:00（北京）自动跑一批；失败当天 17:00、之后每天 12:00/17:00 重试，
    本周成功后跳过；Actions 页面可手动 dispatch（指定 URL/单集，绕过周门控）
-4. Mac 睡眠时任务不执行，注意电源设置
+4. runner 通过 systemd 常驻；计算默认单集、单进程、两线程，给同机 Research Agent 留出资源
 
 ## 声纹克隆用法
 

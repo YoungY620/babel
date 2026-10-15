@@ -1,4 +1,6 @@
 $schema: 'https://moonrepo.dev/schemas/workspace.json'
 
 projects:
-  - 'apps/*'
+  root: '.'
+  pipeline: 'apps/pipeline'
+  web: 'apps/web'

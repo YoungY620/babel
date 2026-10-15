@@ -6,6 +6,7 @@
     "moon": "moon"
   },
   "devDependencies": {
-    "@moonrepo/cli": "^1.41.0"
-  }
+    "@moonrepo/cli": "1.41.7"
+  },
+  "packageManager": "pnpm@10.28.1"
 }
