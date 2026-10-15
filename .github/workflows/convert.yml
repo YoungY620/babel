@@ -121,4 +121,5 @@ jobs:
           test ! -r /etc/rancher/k3s/k3s.yaml
           test ! -w /var/run/docker.sock
           python3.12 --version
+          gh --version
           ffmpeg -version | head -1

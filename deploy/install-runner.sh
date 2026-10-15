@@ -23,7 +23,7 @@ if [ -f .runner ]; then
   exit 1
 fi
 apt-get update
-apt-get install -y ca-certificates curl ffmpeg git libicu-dev
+apt-get install -y ca-certificates curl ffmpeg gh git libicu-dev
 archive=$(mktemp)
 trap 'rm -f "$archive"; unset TOKEN' EXIT
 curl --fail --location --retry 3 \
