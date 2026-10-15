@@ -26,6 +26,7 @@ jobs:
     runs-on: [self-hosted, macOS]
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
@@ -47,8 +48,12 @@ jobs:
         working-directory: apps/pipeline
         run: |
           if [ ! -x .venv/bin/python ]; then
-            python3 -m venv .venv
-            .venv/bin/pip install edge-tts faster-whisper mutagen yt-dlp
+            PY=$(command -v /opt/homebrew/bin/python3.12 || command -v python3)
+            "$PY" -m venv .venv
+            .venv/bin/pip install "numpy<2" edge-tts faster-whisper mutagen yt-dlp \
+              resemblyzer "coqui-tts[codec]" "transformers>=4.57,<5" "setuptools<81" pypinyin
+            curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos \
+              -o .venv/bin/yt-dlp && chmod +x .venv/bin/yt-dlp
           fi
 
       - name: convert

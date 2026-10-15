@@ -15,8 +15,17 @@ export OPENAI_API_KEY=...            # 翻译需要；OPENAI_BASE_URL / TRANSLAT
 ```
 
 等价的分步命令：`transcribe.py`（faster-whisper large-v3-turbo）→
-`translate.py`（OpenAI 兼容 API，分块）→ `tts.py`（edge-tts，默认
-zh-CN-YunjianNeural，`--voice` 可换）。
+`diarize.py`（resemblyzer 声纹聚类，打 SPEAKER_XX 标签）→
+`samples.py`（每人剪 ~60s 克隆样本）→
+`translate.py`（OpenAI 兼容 API，分块）→
+`tts.py`（默认 XTTS v2 声纹克隆，逐段用对应说话人嗓音合成中文；
+`--backend edge` 退化为 edge-tts 多音色）。
+
+## 声纹克隆说明
+
+- 样本在 `episodes/<slug>/samples/SPEAKER_XX.wav`，可人工替换成更干净的片段
+- SPEAKER_00 = 全片说话时长最长者（通常为主播/主访谈人）
+- 克隆真实人物嗓音用于公开发布涉及肖像/声音权，见根 README 版权提醒
 
 ## 精翻模式（短集/重要集）
 

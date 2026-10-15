@@ -2,186 +2,223 @@
  {
   "start": 0.14,
   "end": 6.26,
-  "text": "Hello, and welcome to Acquired, the podcast about great companies and the stories and playbooks behind them."
+  "text": "Hello, and welcome to Acquired, the podcast about great companies and the stories and playbooks behind them.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 6.54,
   "end": 7.28,
-  "text": "I'm Ben Gilbert."
+  "text": "I'm Ben Gilbert.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 7.7,
   "end": 8.7,
-  "text": "I'm David Rosenthal."
+  "text": "I'm David Rosenthal.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 9.06,
   "end": 10.26,
-  "text": "And we are your hosts."
+  "text": "And we are your hosts.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 10.7,
   "end": 18.78,
-  "text": "So, Ben and I are obsessed with uncovering the history, strategy, and stories behind what built the greatest companies in the world."
+  "text": "So, Ben and I are obsessed with uncovering the history, strategy, and stories behind what built the greatest companies in the world.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 19.14,
   "end": 25.64,
-  "text": "Each month, we choose a company, and we spend the entire month researching what uniquely made it work, where many others failed."
+  "text": "Each month, we choose a company, and we spend the entire month researching what uniquely made it work, where many others failed.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 25.64,
   "end": 34.08,
-  "text": "The output of that is a full-day recording session where Ben and I come together and tell the absolute deepest business and technology stories on the internet."
+  "text": "The output of that is a full-day recording session where Ben and I come together and tell the absolute deepest business and technology stories on the internet.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 34.3,
   "end": 41.0,
-  "text": "And when we say obsessed, we mean that we spend 100 hours each reading everything that exists about a company,"
+  "text": "And when we say obsessed, we mean that we spend 100 hours each reading everything that exists about a company,",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 41.38,
   "end": 45.6,
-  "text": "and doing primary research and background interviews with the people who lived it firsthand."
+  "text": "and doing primary research and background interviews with the people who lived it firsthand.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 46.1,
   "end": 52.42,
-  "text": "These are stories like NVIDIA, Costco, Hermes, Microsoft, Rolex, Amazon."
+  "text": "These are stories like NVIDIA, Costco, Hermes, Microsoft, Rolex, Amazon.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 52.9,
   "end": 54.58,
-  "text": "Those are some of our favorites, anyway."
+  "text": "Those are some of our favorites, anyway.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 54.58,
   "end": 65.04,
-  "text": "What started 10 years ago as just the study of tech companies has led to a curiosity about our broader world from Berkshire Hathaway to the NFL or even Taylor Swift."
+  "text": "What started 10 years ago as just the study of tech companies has led to a curiosity about our broader world from Berkshire Hathaway to the NFL or even Taylor Swift.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 65.34,
   "end": 70.64,
-  "text": "Our goal in creating each episode is to uncover the secrets that are lurking in plain sight"
+  "text": "Our goal in creating each episode is to uncover the secrets that are lurking in plain sight",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 70.64,
   "end": 74.82,
-  "text": "and how these world-changing companies went from obscurity to ubiquity."
+  "text": "and how these world-changing companies went from obscurity to ubiquity.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 75.18,
   "end": 79.66,
-  "text": "So if you've ever wondered, how did Starbucks end up on every corner around the globe?"
+  "text": "So if you've ever wondered, how did Starbucks end up on every corner around the globe?",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 79.66,
   "end": 85.7,
-  "text": "Or what does Visa actually do, and how did they become the payment rails of the whole globe?"
+  "text": "Or what does Visa actually do, and how did they become the payment rails of the whole globe?",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 86.18,
   "end": 89.7,
-  "text": "Or why is the NFL so much bigger than other sports leagues?"
+  "text": "Or why is the NFL so much bigger than other sports leagues?",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 90.12,
   "end": 91.38,
-  "text": "Then Acquired is for you."
+  "text": "Then Acquired is for you.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 91.38,
   "end": 92.18,
-  "text": "Yep."
+  "text": "Yep.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 92.4,
   "end": 95.52,
-  "text": "We have a unique format that we do on the show."
+  "text": "We have a unique format that we do on the show.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 95.66,
   "end": 97.8,
-  "text": "We call it a conversational audiobook."
+  "text": "We call it a conversational audiobook.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 98.32,
   "end": 101.68,
-  "text": "Ben and I tell these stories of these companies through a deep conversation."
+  "text": "Ben and I tell these stories of these companies through a deep conversation.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 102.16,
   "end": 105.18,
-  "text": "And typically, it's just the two of us without an interview guest."
+  "text": "And typically, it's just the two of us without an interview guest.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 105.92,
   "end": 110.18,
-  "text": "Occasionally, we will bring in a protagonist from the story, like Howard Schultz from Starbucks,"
+  "text": "Occasionally, we will bring in a protagonist from the story, like Howard Schultz from Starbucks,",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 110.4,
   "end": 113.0,
-  "text": "or Jensen Huang from NVIDIA, or Mark Zuckerberg from Meta."
+  "text": "or Jensen Huang from NVIDIA, or Mark Zuckerberg from Meta.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 113.42,
   "end": 117.68,
-  "text": "Usually, though, that's as a follow-up interview to a deep dive that we've already done on their company."
+  "text": "Usually, though, that's as a follow-up interview to a deep dive that we've already done on their company.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 117.68,
   "end": 119.66,
-  "text": "Now, one thing we should say."
+  "text": "Now, one thing we should say.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 120.2,
   "end": 125.94,
-  "text": "Our episodes are typically very long, like three to four hours long, since we go really deep."
+  "text": "Our episodes are typically very long, like three to four hours long, since we go really deep.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 126.22,
   "end": 126.88,
-  "text": "But don't be scared."
+  "text": "But don't be scared.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 127.3,
   "end": 130.34,
-  "text": "These are amazing stories that deserve every minute."
+  "text": "These are amazing stories that deserve every minute.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 130.78,
   "end": 133.16,
-  "text": "And we have a lot of fun along the way."
+  "text": "And we have a lot of fun along the way.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 133.62,
   "end": 139.24,
-  "text": "Our goal is really to deliver a complete understanding of a company by the time you finish the episode."
+  "text": "Our goal is really to deliver a complete understanding of a company by the time you finish the episode.",
+  "speaker": "SPEAKER_01"
  },
  {
   "start": 139.24,
   "end": 140.82,
-  "text": "So we're glad you're here."
+  "text": "So we're glad you're here.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 141.0,
   "end": 141.26,
-  "text": "Welcome."
+  "text": "Welcome.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 141.58,
   "end": 149.52,
-  "text": "And if you ever want to discuss any episodes or give us any feedback, join us in the Acquired community at Acquired.fm slash Slack."
+  "text": "And if you ever want to discuss any episodes or give us any feedback, join us in the Acquired community at Acquired.fm slash Slack.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 149.92,
   "end": 150.4,
-  "text": "Welcome."
+  "text": "Welcome.",
+  "speaker": "SPEAKER_00"
  },
  {
   "start": 150.4,
   "end": 150.58,
-  "text": "Welcome."
+  "text": "Welcome.",
+  "speaker": "SPEAKER_00"
  }
 ]

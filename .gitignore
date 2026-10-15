@@ -12,3 +12,5 @@ apps/pipeline/episodes/*/source.mp3
 apps/pipeline/episodes/*/zh.mp3
 __pycache__/
 dist/
+voices.json
+apps/pipeline/.venv-old/

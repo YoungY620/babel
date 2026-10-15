@@ -1,18 +1,131 @@
 #!/usr/bin/env python3
-"""Chinese TTS for transcript_zh.json -> zh.mp3 using edge-tts (free).
+"""中文 TTS -> zh.mp3。逐段用对应说话人的嗓音合成。
 
-Usage: tts.py <slug> [--voice zh-CN-YunjianNeural] [--rate +10%]
-Voices worth trying: zh-CN-YunjianNeural (男), zh-CN-XiaoxiaoNeural (女),
-                     zh-CN-YunxiNeural (男, 年轻)
+后端（--backend auto 时自动选择）：
+  elevenlabs — ElevenLabs（首选，最成熟）：用 samples/SPEAKER_XX.wav 做
+               Instant Voice Clone（voice_id 缓存在 voices.json 跨集复用），
+               eleven_multilingual_v2 合成中文。需 ELEVENLABS_API_KEY。
+  xtts       — XTTS v2 本地克隆（免费兜底，需 diarize.py + samples.py 产物）
+  edge       — edge-tts（无克隆；不同说话人映射不同中文音色）
+
+Usage: tts.py <slug> [--backend auto|elevenlabs|xtts|edge] [--rate +0%]
 """
-import argparse, asyncio, json, subprocess, tempfile
+import argparse, asyncio, json, os, subprocess, tempfile, urllib.request, uuid
 from pathlib import Path
 
+os.environ.setdefault("COQUI_TOS_AGREED", "1")  # XTTS v2 CPML，见 https://coqui.ai/cpml
+
 ROOT = Path(__file__).resolve().parent.parent
-CHUNK_CHARS = 1800
+CHUNK_CHARS = 180          # 单次合成的舒适长度
+EDGE_VOICES = ["zh-CN-YunjianNeural", "zh-CN-YunxiNeural", "zh-CN-XiaoxiaoNeural",
+               "zh-CN-YunzeNeural", "zh-CN-XiaoyiNeural"]
+EL_MODEL = "eleven_multilingual_v2"
+VOICES_JSON = ROOT / "voices.json"
+
+_xtts = None
 
 
-async def synth(text: str, voice: str, rate: str, out: Path):
+# ---------- elevenlabs ----------
+
+def load_voice_cache():
+    return json.loads(VOICES_JSON.read_text()) if VOICES_JSON.exists() else {}
+
+
+def el_request(path, data=None, headers=None, raw=None):
+    key = os.environ["ELEVENLABS_API_KEY"]
+    req = urllib.request.Request(
+        f"https://api.elevenlabs.io{path}", data=data,
+        headers={"xi-api-key": key, **(headers or {})})
+    with urllib.request.urlopen(req, timeout=600) as r:
+        return r.read() if raw else json.load(r)
+
+
+def el_ensure_voice(show_id: str, speaker: str, wav: Path) -> str:
+    """Instant Voice Clone（每 show+speaker 只建一次，voice_id 缓存在 voices.json）。"""
+    cache = load_voice_cache()
+    vid = cache.get(show_id, {}).get(speaker, {}).get("voice_id")
+    if vid:
+        return vid
+    boundary = uuid.uuid4().hex
+    parts = []
+    def field(name, value):
+        parts.append(f"--{boundary}\r\nContent-Disposition: form-data; "
+                     f'name="{name}"\r\n\r\n{value}\r\n'.encode())
+    def filefield(name, path):
+        parts.append(f"--{boundary}\r\nContent-Disposition: form-data; "
+                     f'name="{name}"; filename="{path.name}"\r\n'
+                     f"Content-Type: audio/wav\r\n\r\n".encode()
+                     + path.read_bytes() + b"\r\n")
+    field("name", f"babel-{show_id}-{speaker}")
+    field("description", f"auto-cloned by babel pipeline ({show_id} {speaker})")
+    filefield("files", wav)
+    parts.append(f"--{boundary}--\r\n".encode())
+    res = el_request("/v1/voices/add", data=b"".join(parts),
+                     headers={"content-type": f"multipart/form-data; boundary={boundary}"})
+    vid = res["voice_id"]
+    cache.setdefault(show_id, {})[speaker] = {"voice_id": vid, "sample": wav.name}
+    VOICES_JSON.write_text(json.dumps(cache, ensure_ascii=False, indent=1))
+    print(f"cloned voice {show_id}/{speaker} -> {vid}")
+    return vid
+
+
+def el_tts(text: str, voice_id: str, out: Path):
+    audio = el_request(
+        f"/v1/text-to-speech/{voice_id}",
+        data=json.dumps({"text": text, "model_id": EL_MODEL}).encode(),
+        headers={"content-type": "application/json"}, raw=True)
+    out.write_bytes(audio)
+
+
+def synth_elevenlabs(chunks, d: Path, show_id: str, td: Path):
+    samples = d / "samples"
+    speakers = {sp for sp, _ in chunks}
+    voices = {}
+    for sp in speakers:
+        wav = samples / f"{sp}.wav"
+        if not wav.exists():
+            wav = samples / "SPEAKER_00.wav"
+        voices[sp] = el_ensure_voice(show_id, sp, wav)
+    parts = []
+    for i, (sp, text) in enumerate(chunks):
+        p = td / f"part{i:04d}.mp3"
+        el_tts(text, voices[sp], p)
+        parts.append(p)
+        print(f"\relevenlabs {i+1}/{len(chunks)}", end="", flush=True)
+    print()
+    return parts
+
+
+# ---------- xtts ----------
+
+def get_xtts():
+    global _xtts
+    if _xtts is None:
+        from TTS.api import TTS
+        device = os.environ.get("TTS_DEVICE", "cpu")
+        _xtts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+    return _xtts
+
+
+def synth_xtts(chunks, samples_dir: Path, td: Path):
+    tts = get_xtts()
+    parts = []
+    for i, (sp, text) in enumerate(chunks):
+        wav_in = samples_dir / f"{sp}.wav"
+        if not wav_in.exists():
+            wav_in = samples_dir / "SPEAKER_00.wav"
+        p = td / f"part{i:04d}.wav"
+        tts.tts_to_file(text=text, speaker_wav=str(wav_in),
+                        language="zh-cn", file_path=str(p))
+        parts.append(p)
+        print(f"\rxtts {i+1}/{len(chunks)}", end="", flush=True)
+    print()
+    return parts
+
+
+# ---------- edge ----------
+
+async def synth_edge(text, voice, rate, out):
     import edge_tts
     c = edge_tts.Communicate(text, voice, rate=rate)
     with open(out, "wb") as f:
@@ -21,37 +134,72 @@ async def synth(text: str, voice: str, rate: str, out: Path):
                 f.write(chunk["data"])
 
 
+def synth_edge_all(chunks, rate, td: Path):
+    parts = []
+    for i, (sp, text) in enumerate(chunks):
+        idx = int(sp.split("_")[-1]) if sp.startswith("SPEAKER_") else 0
+        p = td / f"part{i:04d}.mp3"
+        asyncio.run(synth_edge(text, EDGE_VOICES[idx % len(EDGE_VOICES)], rate, p))
+        parts.append(p)
+        print(f"\redge {i+1}/{len(chunks)}", end="", flush=True)
+    print()
+    return parts
+
+
+# ---------- main ----------
+
+def chunk_by_speaker(segs):
+    chunks, cur_sp, cur, n = [], None, [], 0
+    for s in segs:
+        sp = s.get("speaker", "SPEAKER_00")
+        t = (s.get("text_zh") or s["text"]).strip().rstrip("。.!！")
+        if (sp != cur_sp or n + len(t) > CHUNK_CHARS) and cur:
+            chunks.append((cur_sp, "。".join(cur)))
+            cur, n = [], 0
+        cur_sp = sp
+        cur.append(t)
+        n += len(t)
+    if cur:
+        chunks.append((cur_sp, "。".join(cur)))
+    return chunks
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("slug")
-    ap.add_argument("--voice", default="zh-CN-YunjianNeural")
+    ap.add_argument("--backend", default="auto",
+                    choices=["auto", "elevenlabs", "xtts", "edge"])
     ap.add_argument("--rate", default="+0%")
     args = ap.parse_args()
 
     d = ROOT / "episodes" / args.slug
+    meta = json.loads((d / "meta.json").read_text())
     segs = json.loads((d / "transcript_zh.json").read_text())
-    texts = [s.get("text_zh") or s["text"] for s in segs]
+    chunks = chunk_by_speaker(segs)
 
-    chunks, cur, n = [], [], 0
-    for t in texts:
-        if n + len(t) > CHUNK_CHARS and cur:
-            chunks.append("。".join(cur)); cur, n = [], 0
-        cur.append(t.rstrip("。.!！")); n += len(t)
-    if cur:
-        chunks.append("。".join(cur))
+    backend = args.backend
+    if backend == "auto":
+        if os.environ.get("ELEVENLABS_API_KEY"):
+            backend = "elevenlabs"
+        elif (d / "samples").is_dir() and any((d / "samples").glob("*.wav")):
+            backend = "xtts"
+        else:
+            backend = "edge"
+    print(f"{len(chunks)} chunks, backend={backend}")
 
-    with tempfile.TemporaryDirectory() as td:
-        parts = []
-        for i, ctext in enumerate(chunks):
-            p = Path(td) / f"part{i:04d}.mp3"
-            asyncio.run(synth(ctext, args.voice, args.rate, p))
-            parts.append(p)
-            print(f"\rtts {i+1}/{len(chunks)}", end="", flush=True)
-        print()
-        lst = Path(td) / "list.txt"
+    with tempfile.TemporaryDirectory() as tds:
+        td = Path(tds)
+        if backend == "elevenlabs":
+            parts = synth_elevenlabs(chunks, d, meta.get("show", "other"), td)
+        elif backend == "xtts":
+            parts = synth_xtts(chunks, d / "samples", td)
+        else:
+            parts = synth_edge_all(chunks, args.rate, td)
+        lst = td / "list.txt"
         lst.write_text("".join(f"file '{p}'\n" for p in parts))
         subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lst),
-                        "-c", "copy", str(d / "zh.mp3")], check=True, capture_output=True)
+                        "-c:a", "libmp3lame", "-b:a", "64k", "-ac", "1",
+                        str(d / "zh.mp3")], check=True, capture_output=True)
     print(f"OK -> {d / 'zh.mp3'}")
 
 

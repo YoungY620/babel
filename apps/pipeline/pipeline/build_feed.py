@@ -34,6 +34,9 @@ h1{font-size:1.6rem} a{color:#7ab8ff}
 .date{color:#8a8f9a;font-size:.85rem;margin:0 0 8px}
 audio{width:100%}
 .feed{background:#1a1e26;border-radius:8px;padding:10px 14px;font-size:.9rem;word-break:break-all}
+.support{background:#1a1e26;border-radius:8px;padding:12px 16px;margin:14px 0;font-size:.92rem}
+.support a{margin-right:14px}
+.support code{display:block;margin-top:8px;font-size:.8rem;color:#c9ced8;word-break:break-all;user-select:all}
 article h1{font-size:1.5rem} article h2{font-size:1.15rem;margin-top:1.8em}
 article p{margin:.9em 0}
 .back{font-size:.9rem}
@@ -76,6 +79,29 @@ def page(title: str, body: str) -> str:
 <style>{STYLE}</style></head><body>
 {body}
 </body></html>"""
+
+
+def support_html(cfg) -> str:
+    """支持位：SUPPORT_LINKS="名称=URL|名称=URL"；
+    SUPPORT_SOLANA_PAY=solana:<addr>?...&message=...（附言随 memo program 上链）；
+    SUPPORT_CRYPTO="标签:地址"（纯地址展示，EVM 转账无法附言）。"""
+    links = cfg.get("SUPPORT_LINKS", "")
+    solpay = cfg.get("SUPPORT_SOLANA_PAY", "")
+    crypto = cfg.get("SUPPORT_CRYPTO", "")
+    if not (links or solpay or crypto):
+        return ""
+    out = ['<div class="support">☕ 支持这个站点：']
+    for part in links.split("|"):
+        if "=" in part:
+            name, url = part.split("=", 1)
+            out.append(f'<a href="{html.escape(url.strip())}">{html.escape(name.strip())}</a>')
+    if solpay:
+        out.append(f'<a href="{html.escape(solpay.strip())}">加密捐赠（Solana Pay，附言自动上链）</a>')
+    if crypto:
+        label, _, addr = crypto.partition(":")
+        out.append(f"<code>{html.escape(label.strip())}: {html.escape(addr.strip())}</code>")
+    out.append("</div>")
+    return "".join(out)
 
 
 def fetch_cover(url: str, base: str):
@@ -217,6 +243,7 @@ def main():
     index_body = f"""<h1>{html.escape(show_title)}</h1>
 <p>英文访谈/播客的中文精译：音频 + 文字版。用任意播客客户端（小宇宙 / Apple Podcasts / Overcast…）订阅 RSS：</p>
 <p class="feed">{feed_url}</p>
+{support_html(cfg)}
 <div class="tabs">{''.join(tabs)}</div>
 {''.join(sections)}
 <script>

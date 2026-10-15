@@ -73,6 +73,14 @@ def process(slug: str):
         run("transcribe.py", slug)
     else:
         print("skip transcribe (exists)")
+    if not (d / "diarization.json").exists():
+        run("diarize.py", slug)
+    else:
+        print("skip diarize (exists)")
+    if not (d / "samples").is_dir() or not any((d / "samples").glob("*.wav")):
+        run("samples.py", slug)
+    else:
+        print("skip samples (exists)")
     if not (d / "transcript_zh.json").exists():
         if not os.environ.get("OPENAI_API_KEY"):
             sys.exit("需要 OPENAI_API_KEY 才能翻译（或手工提供 transcript_zh.json）")
