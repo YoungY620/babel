@@ -46,6 +46,8 @@ jobs:
         with:
           clean: false    # 保留工作区里的下载/venv/断点产物，跨 run 续跑
 
+      - run: bash scripts/configure_pipeline.sh
+
       - name: privacy check
         run: bash scripts/privacy_check.sh
 
@@ -104,6 +106,7 @@ jobs:
         with:
           clean: false
           persist-credentials: false
+      - run: bash scripts/configure_pipeline.sh
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -111,6 +114,10 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.12'
+      - name: Install Python
+        run: |
+          uv python install 3.12
+          echo "$(dirname "$(uv python find 3.12)")" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
       - run: pnpm moon run root:privacy pipeline:check pipeline:test
       - name: Verify isolation
@@ -122,4 +129,6 @@ jobs:
           test ! -w /var/run/docker.sock
           python3.12 --version
           gh --version
+          git var GIT_AUTHOR_IDENT
+          python3.12 -c 'import sys; sys.path.insert(0,"apps/pipeline/pipeline"); from build_feed import load_config; cfg=load_config(); assert cfg["GITHUB_USER"] and cfg["GITHUB_REPO"]'
           ffmpeg -version | head -1

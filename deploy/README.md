@@ -13,3 +13,5 @@ Research Agent 的实际高峰需求包含独立执行容器，不能从后端 P
 
 服务名可从 `/srv/babel/runner/.service` 读取。用 `systemctl status`、`journalctl -u` 检查状态。
 先运行 convert 工作流的 `smoke=true` 模式，验证 Ubuntu、Python、FFmpeg、Moon 和权限隔离；该模式不会转换或发布内容。
+
+工作流在 checkout 后运行 `scripts/configure_pipeline.sh`，设置 noreply Git 身份，并在首次运行时生成被忽略的公开发布配置。已有配置保留，运营者可在 runner 工作区编辑节目名称与 Ko-fi 链接；不得在此文件存放密钥。Smoke 同时检查配置能读取和 Git 作者身份可用。Python 由 uv 显式安装并加入后续步骤 PATH，不依赖系统 Python 版本。

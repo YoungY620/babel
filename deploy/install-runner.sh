@@ -16,6 +16,9 @@ trap 'unset TOKEN' EXIT
 if ! id "$RUNNER_USER" >/dev/null 2>&1; then
   useradd --system --create-home --home-dir "$RUNNER_HOME" --shell /bin/bash "$RUNNER_USER"
 fi
+owner=${REPOSITORY%/*}
+runuser -u "$RUNNER_USER" -- git config --global user.name "$owner"
+runuser -u "$RUNNER_USER" -- git config --global user.email "$owner@users.noreply.github.com"
 install -d -o "$RUNNER_USER" -g "$RUNNER_USER" "$RUNNER_HOME/runner" "$RUNNER_HOME/tools"
 cd "$RUNNER_HOME/runner"
 if [ -f .runner ]; then
