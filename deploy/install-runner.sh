@@ -71,6 +71,10 @@ runuser -u "$RUNNER_USER" -- ./config.sh --unattended \
   --url "https://github.com/$REPOSITORY" \
   --name babel-ubuntu --labels babel --work _work
 unset TOKEN ACTIONS_RUNNER_INPUT_TOKEN
+# The archive ships this launcher in bin; svc.sh normally copies it here.
+# Copy as the unprivileged account, never execute its installer as root.
+runuser -u "$RUNNER_USER" -- cp bin/runsvc.sh runsvc.sh
+runuser -u "$RUNNER_USER" -- chmod 755 runsvc.sh
 runuser -u "$RUNNER_USER" -- tee .env >/dev/null <<ENV
 RUNNER_TOOL_CACHE=$RUNNER_HOME/tools
 AGENT_TOOLSDIRECTORY=$RUNNER_HOME/tools
