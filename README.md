@@ -17,7 +17,7 @@
 apps/
   pipeline/    转换流水线（核心）：抓取 → 转录 → 说话人分离 → 翻译 → 预设音色配音
                → 文字版润色 → 发布（Pages RSS/播放器 + Releases 音频）
-  web/         （规划中）产品介绍页 + Web 播客客户端
+  web/         React 播客资料库、双语界面、播放器与文字稿
 skills/        babel-fetch / babel-convert / babel-humanize / babel-publish
 scripts/       setup_pipeline.sh（Ubuntu Python 环境）、cookies_refresh.sh（YouTube cookies）、privacy_check.sh（隐私扫描）
 .github/workflows/
@@ -84,7 +84,7 @@ bash pipeline/publish.sh                        # 发布到 Pages + Releases
 在候选男声、女声中匹配；不克隆声音，不判断真实身份。也可用 `tts.py <slug> --voice cedar` 明确指定。显式指定会保留；`--voice auto` 重新启用自动音色选择。
 候选音色和风格描述集中在 `apps/pipeline/voice-presets.json`。
 
-- TTS 使用 OpenAI 当前推荐模型的固定快照 `gpt-realtime-2.1`。
+- TTS 使用 OpenAI 受支持的语音模型 `gpt-realtime-2.1`。
 - `gpt-audio-1.5` 逐段检查漏字、重复、数字、专名、多音字、断句和语气；失败重试一次，仍失败则停止，不写完成产物。
 - 保留原文问号、感叹号和句末标点；按语义和说话人分块，只修剪首尾静音，保留句内停顿，并设置明确的块间停顿。
 - 最终音频目标为 -16 LUFS（±1），真峰值不高于 -1 dBTP，128 kbps 单声道 MP3。
@@ -109,7 +109,8 @@ YouTube 有机器人风控。首次在浏览器登录 YouTube 后运行
 SUPPORT_LINKS="Ko-fi=https://ko-fi.com/<你的名字>"
 ```
 
-再跑 `build_feed.py` 即出现在首页与 feed 说明。
+React 构建时设置公共变量 `VITE_SUPPORT_URL=https://ko-fi.com/<name>` 显示支持链接。
+Web 开发与构建见 [apps/web/README.md](apps/web/README.md)。
 
 ## 隐私
 

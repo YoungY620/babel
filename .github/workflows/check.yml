@@ -15,4 +15,4 @@ jobs:
         with:
           node-version: '22'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm moon run root:privacy pipeline:check pipeline:test catalog:check catalog:test
+      - run: pnpm moon run root:privacy pipeline:check pipeline:test catalog:check catalog:test web:check web:test web:build

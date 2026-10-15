@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "episodeId": "babel-preview",
+  "article": {
+    "zh-CN": "一家公司的成长，往往不是一条直线。\n\n真正值得追问的是：在那些关键时刻，他们为什么作出了不同的选择？\n\n今天，我们从一个具体的故事开始。先看发生了什么，再看其中的原因。",
+    "en": "A company's growth is rarely a straight line.\n\nThe real question is why they made different choices at those crucial moments.\n\nToday, we start with one story. First, what happened. Then, why it happened."
+  },
+  "cues": [
+    {
+      "start": 0,
+      "end": 3.3,
+      "speaker": "Narrator",
+      "text": {
+        "zh-CN": "一家公司的成长，往往不是一条直线。",
+        "en": "A company's growth is rarely a straight line."
+      }
+    },
+    {
+      "start": 4.92,
+      "end": 10.48,
+      "speaker": "Narrator",
+      "text": {
+        "zh-CN": "真正值得追问的是：在那些关键时刻，他们为什么作出了不同的选择？",
+        "en": "The real question is why they made different choices at those crucial moments."
+      }
+    },
+    {
+      "start": 12.62,
+      "end": 18.06,
+      "speaker": "Narrator",
+      "text": {
+        "zh-CN": "今天，我们从一个具体的故事开始。先看发生了什么，再看其中的原因。",
+        "en": "Today, we start with one story. First, what happened. Then, why it happened."
+      }
+    }
+  ]
+}
