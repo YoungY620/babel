@@ -9,6 +9,7 @@ apps/
   pipeline/    转换流水线：抓取 → faster-whisper 转录 → LLM 翻译 → edge-tts 中文配音
                → GitHub Releases 托管音频 + GitHub Pages 输出 RSS/网页播放器
   ios/         （规划中）iOS 播客客户端
+  web/         （规划中）产品介绍页 + Web 播客客户端
 skills/
   babel-fetch/     抓取播客单集 / 访谈视频音轨（agent skill）
   babel-convert/   转换为中文音频（agent skill）
