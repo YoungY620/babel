@@ -1,0 +1,14 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+project:
+  name: 'catalog'
+  description: 'Shared bilingual podcast data contract'
+tags: ['typescript']
+tasks:
+  check:
+    command: 'pnpm check'
+  test:
+    command: 'pnpm test'
+  validate:
+    command: 'pnpm validate'
+    options:
+      cache: false

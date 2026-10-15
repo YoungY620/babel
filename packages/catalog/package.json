@@ -1,0 +1,19 @@
+{
+  "name": "@babel/catalog",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "validate": "tsx src/validate.ts"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.0",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  }
+}
