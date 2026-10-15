@@ -6,7 +6,8 @@
   "scripts": {
     "check": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "validate": "tsx src/validate.ts"
+    "validate": "tsx src/validate.ts",
+    "snapshot": "tsx src/snapshot.ts"
   },
   "dependencies": {
     "zod": "4.6.7"

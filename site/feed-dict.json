@@ -1,0 +1,12 @@
+{
+  "zh-CN": {
+    "title": "巴别塔 Babel",
+    "description": "英文播客的中文音频与双语文字稿。",
+    "aiDisclosure": "本音频由 AI 合成配音，非原说话人录音。"
+  },
+  "en": {
+    "title": "Babel",
+    "description": "English podcasts in Mandarin, with bilingual transcripts.",
+    "aiDisclosure": "This audio uses AI-generated narration, not the original speakers' recordings."
+  }
+}

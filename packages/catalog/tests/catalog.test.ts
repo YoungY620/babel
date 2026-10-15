@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtemp, mkdir, writeFile, rm, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { catalogSchema, detailSchema, renderVtt } from '../src/index.ts';
 import { validateDirectory } from '../src/validate.ts';
+import { copySnapshot } from '../src/snapshot.ts';
 
 const label = { 'zh-CN': '试听', en: 'Preview' };
 const episode = {
@@ -60,9 +61,43 @@ test('validates actual detail, captions and assets without following escaping sy
     await writeFile(join(outside, 'cover.svg'), '<svg/>');
     await rm(join(root, 'covers/babel.svg'));
     await symlink(join(outside, 'cover.svg'), join(root, 'covers/babel.svg'));
-    await assert.rejects(validateDirectory(root), /escapes/);
+    await assert.rejects(validateDirectory(root), /Symbolic links/);
   } finally {
     await rm(root, { recursive: true, force: true });
     await rm(outside, { recursive: true, force: true });
+  }
+});
+
+
+test('copies only typed data and reviewed covers, rejecting internal data aliases', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'babel-snapshot-'));
+  const input = join(root, 'input'), assets = join(root, 'assets');
+  try {
+    await mkdir(join(input, 'episodes/preview'), { recursive: true });
+    await mkdir(join(input, 'covers'));
+    await mkdir(join(assets, 'covers'), { recursive: true });
+    await writeFile(join(assets, 'covers/babel.svg'), '<svg>reviewed</svg>');
+    await writeFile(join(input, 'covers/babel.svg'), 'untrusted cover content');
+    await writeFile(join(input, 'catalog.json'), JSON.stringify(catalog));
+    await writeFile(join(input, episode.detail), JSON.stringify(detail));
+    for (const locale of ['zh-CN', 'en'] as const) await writeFile(join(input, episode.captions[locale]), renderVtt(detail.cues, locale));
+    await writeFile(join(input, 'index.html'), '<script>untrusted</script>');
+    await writeFile(join(input, 'internal-state.json'), '{"private":"not public"}');
+    await writeFile(join(input, 'feed.xml'), '<untrusted-feed/>');
+    const output = join(root, 'output');
+    await copySnapshot(input, output, assets);
+    assert.equal(await readFile(join(output, 'covers/babel.svg'), 'utf8'), '<svg>reviewed</svg>');
+    for (const extra of ['index.html', 'internal-state.json', 'feed.xml']) await assert.rejects(readFile(join(output, extra)), /ENOENT/);
+    await assert.rejects(copySnapshot(input, output, assets), /EEXIST/);
+    await rm(join(input, episode.detail));
+    await writeFile(join(input, 'alias.json'), JSON.stringify(detail));
+    await symlink(join(input, 'alias.json'), join(input, episode.detail));
+    await assert.rejects(copySnapshot(input, join(root, 'alias-output'), assets), /Symbolic links/);
+    await rm(join(input, episode.detail));
+    await writeFile(join(input, episode.detail), JSON.stringify(detail));
+    await writeFile(join(input, episode.captions.en), 'WEBVTT\n');
+    await assert.rejects(copySnapshot(input, join(root, 'bad-captions'), assets), /Captions do not match/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });
