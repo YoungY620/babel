@@ -37,6 +37,8 @@ jobs:
       WHISPER_BACKEND: "mlx"      # Apple GPU 转录（约 18x 实时）；无 mlx 环境时自动回退 ct2
     steps:
       - uses: actions/checkout@v4
+        with:
+          clean: false    # 保留工作区里的下载/venv/断点产物，跨 run 续跑
 
       - name: privacy check
         run: bash scripts/privacy_check.sh

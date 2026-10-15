@@ -34,9 +34,25 @@ def slugify(title: str) -> str:
 
 
 def load_feed(rss_url: str):
-    """返回 (channel_info, items)。channel_info 含 description/image。"""
-    with urllib.request.urlopen(urllib.request.Request(rss_url, headers=UA)) as r:
-        ch = ET.parse(r).getroot().find("channel")
+    """返回 (channel_info, items)。channel_info 含 description/image。
+    对 5xx/429 等瞬态错误做指数退避重试。"""
+    import time
+    last = None
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(rss_url, headers=UA),
+                                        timeout=60) as r:
+                ch = ET.parse(r).getroot().find("channel")
+            break
+        except urllib.error.HTTPError as e:
+            last = e
+            if e.code not in (429, 500, 502, 503, 504) or attempt == 3:
+                raise
+            wait = 2 * (attempt + 1)
+            print(f"RSS {e.code}，{wait}s 后重试 ({attempt+1}/3)", flush=True)
+            time.sleep(wait)
+    else:
+        raise last
     ch_img = ch.find(f"{ITUNES}image")
     if ch_img is None:
         ch_img = ch.find("image/url")

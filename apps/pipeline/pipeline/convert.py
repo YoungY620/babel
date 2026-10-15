@@ -54,7 +54,11 @@ def cycle_targets():
     仅当 总时长 > 8h 且 集数 > 5 时才拒收（即 ≤5 集时长不限，或 ≤8h 集数不限）。"""
     batch, total_h = [], 0.0
     for show in load_shows():
-        items = load_items(show["rss"])
+        try:
+            items = load_items(show["rss"])
+        except Exception as e:                      # 单个节目源故障不拖垮整个周期
+            print(f"[{show['id']}] RSS 拉取失败，本周期跳过: {e}")
+            continue
         added = 0
         for i, it in enumerate(items):
             if is_done(slugify(it["title"])):
