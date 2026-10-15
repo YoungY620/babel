@@ -6,7 +6,7 @@ Vite + React 19 client. GitHub Pages serves the build; no Node daemon is require
 pnpm install --frozen-lockfile
 pnpm moon run web:dev
 pnpm moon run web:check web:test web:build
-pnpm --filter @babel/catalog validate apps/web/public
+pnpm --filter @babel/catalog validate "$PWD/apps/web/public"
 ```
 
 Open `http://127.0.0.1:5173/babel/`. Build output is `apps/web/dist`.
@@ -19,4 +19,4 @@ Open `http://127.0.0.1:5173/babel/`. Build output is `apps/web/dist`.
 - `public/feed.xml` and `feed-en.xml` are initially empty feeds with localized metadata. Only fully verified podcasts belong in the subscription feed; previews remain separate.
 - Optional public `VITE_SUPPORT_URL=https://ko-fi.com/<name>` adds the Ko-fi support link. Do not put credentials in any `VITE_*` value.
 
-The current Pages workflow is replaced in a separate deployment PR. See `docs/CATALOG.md` for the pipeline export contract. Production media remains on GitHub Releases, outside the Git tree.
+Pages builds and validates this React app on a hosted runner, then deploys only the validated dist artifact. The build job has read-only repository permissions; the separate deploy job receives Pages/OIDC permissions. Reviewed pipeline data integration follows in the publishing step. See `docs/CATALOG.md` for the pipeline export contract. Production media remains on GitHub Releases, outside the Git tree.
