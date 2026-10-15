@@ -145,6 +145,9 @@ def main():
         if not (meta_p.exists() and mp3.exists() and is_current(d)):
             continue
         meta = json.loads(meta_p.read_text())
+        reviewed = json.loads((d / "web.json").read_text())
+        meta["title"] = reviewed["title"]["zh-CN"]
+        meta["description"] = reviewed["summary"]["zh-CN"]
         meta["zh_bytes"] = mp3.stat().st_size
         # 内容哈希进文件名：重渲染必换 URL，客户端/CDN 不会拿到旧音频
         speech = json.loads((d / "speech.json").read_text())

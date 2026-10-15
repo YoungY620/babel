@@ -100,6 +100,12 @@ class CheckpointTest(unittest.TestCase):
             transcribe.save(directory / 'transcript_en.json', rows)
             self.assertTrue(transcribe.is_current(directory))
             self.assertFalse(transcribe.is_current(directory, 'other-model'))
+            transcribe.save(directory / 'transcribe.json', {
+                'plan': transcribe.source_plan(directory, 'custom-model'), 'rawSha256': transcribe.raw_digest(rows)})
+            self.assertTrue(transcribe.is_current(directory))
+            self.assertTrue(transcribe.is_current(directory, 'custom-model'))
+            with patch.dict('os.environ', {'RAW_ASR_MODEL': 'changed-model'}):
+                self.assertFalse(transcribe.is_current(directory))
             source.write_bytes(b'other recording')
             self.assertFalse(transcribe.is_current(directory))
             source.write_bytes(b'first recording')

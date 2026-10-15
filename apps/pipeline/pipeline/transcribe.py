@@ -30,7 +30,12 @@ def raw_digest(segments):
 def is_current(directory, model=None):
     try:
         report = json.loads((directory / "transcribe.json").read_text())
-        return (isinstance(report, dict) and report.get("plan") == source_plan(directory, model)
+        if not isinstance(report, dict) or not isinstance(report.get("plan"), dict):
+            return False
+        selected = model or os.environ.get("RAW_ASR_MODEL") or report["plan"].get("model")
+        if not isinstance(selected, str) or not selected:
+            return False
+        return (report.get("plan") == source_plan(directory, selected)
                 and report.get("rawSha256") == raw_digest(json.loads((directory / "transcript_en.json").read_text())))
     except (OSError, ValueError, KeyError, TypeError):
         return False

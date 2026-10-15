@@ -177,6 +177,9 @@ class SpeechTests(unittest.TestCase):
             self.assertEqual(len(uploads), 1)
             self.assertNotIn("stale", uploads[0])
             self.assertIn("AI 合成配音", feed)
+            self.assertIn("测试节目", feed)
+            self.assertIn("用于自动化测试。", feed)
+            self.assertNotIn("<title>approved", feed)
             self.assertIn("AI 合成配音", (root / "docs/index.html").read_text())
 
     def test_retry_repairs_a_partial_speaker_sample_directory(self):
