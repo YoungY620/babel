@@ -1,0 +1,15 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+project:
+  name: 'pipeline'
+  description: '音频/视频 → 中文音频转换与 RSS 发布流水线（faster-whisper + LLM 翻译 + edge-tts）'
+
+tags: ['python']
+
+tasks:
+  convert:
+    command: './.venv/bin/python pipeline/convert.py'
+  feed:
+    command: './.venv/bin/python pipeline/build_feed.py'
+  publish:
+    command: 'bash pipeline/publish.sh'

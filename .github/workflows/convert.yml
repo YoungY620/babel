@@ -1,0 +1,49 @@
+name: convert
+
+# 定时转换：每天处理「最新一集尚未转换的」节目，跑在本机 self-hosted runner 上。
+# 也可手动 dispatch 指定单集或视频 URL。
+# 注意：schedule 只在 runner 在线且 Mac 未睡眠时执行；仓库需配 secret OPENAI_API_KEY。
+
+on:
+  schedule:
+    - cron: '47 19 * * *' # 每天 19:47 UTC ≈ 北京时间 03:47
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: '视频/音频页 URL（优先）'
+        required: false
+      rss_index:
+        description: 'RSS 单集序号（fetch.py --list 的编号）'
+        required: false
+
+jobs:
+  convert:
+    runs-on: [self-hosted, macOS]
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ensure venv
+        working-directory: apps/pipeline
+        run: |
+          if [ ! -x .venv/bin/python ]; then
+            python3 -m venv .venv
+            .venv/bin/pip install edge-tts faster-whisper mutagen yt-dlp
+          fi
+
+      - name: convert
+        working-directory: apps/pipeline
+        run: |
+          if [ -n "${{ inputs.video_url }}" ]; then
+            .venv/bin/python pipeline/convert.py --url "${{ inputs.video_url }}"
+          elif [ -n "${{ inputs.rss_index }}" ]; then
+            .venv/bin/python pipeline/convert.py --index "${{ inputs.rss_index }}"
+          else
+            .venv/bin/python pipeline/convert.py --next
+          fi
+
+      - name: publish
+        working-directory: apps/pipeline
+        run: bash pipeline/publish.sh

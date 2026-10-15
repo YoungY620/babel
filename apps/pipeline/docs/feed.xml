@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+     xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>巴别塔 Babel</title>
+  <link>https://YoungY620.github.io/babel</link>
+  <atom:link href="https://YoungY620.github.io/babel/feed.xml" rel="self" type="application/rss+xml"/>
+  <language>zh-cn</language>
+  <description>巴别塔 Babel — Acquired 播客单集的中文精译音频</description>
+  <itunes:author>巴别塔 Babel</itunes:author>
+  <itunes:explicit>false</itunes:explicit>
+  <itunes:owner><itunes:email>YoungY620@users.noreply.github.com</itunes:email></itunes:owner>
+  <item>
+    <title>Trailer: What is Acquired?（中文精译）</title>
+    <description>Every company has a story. Learn the playbooks that built the world’s greatest companies — and how you can apply them. The episodes are deep and heavily-researched, uncovering the full histories behind household names you thought you already knew like Rolex, Amazon, Starbucks, or NVIDIA. Enjoy!</description>
+    <pubDate>Thu, 01 Oct 2015 10:00:00 -0700</pubDate>
+    <guid isPermaLink="false">trailer-what-is-acquired-zh</guid>
+    <enclosure url="https://github.com/YoungY620/babel/releases/download/audio/trailer-what-is-acquired-zh.mp3" length="1011116" type="audio/mpeg"/>
+    <itunes:author>巴别塔 Babel</itunes:author>
+    <itunes:summary>Every company has a story. Learn the playbooks that built the world’s greatest companies — and how you can apply them. The episodes are deep and heavily-researched, uncovering the full histories behind household names you thought you already knew like Rolex, Amazon, Starbucks, or NVIDIA. Enjoy!</itunes:summary>
+  </item>
+</channel>
+</rss>

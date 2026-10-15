@@ -1,0 +1,7 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+project:
+  name: 'ios'
+  description: 'iOS 客户端（规划中）：订阅巴别塔 RSS 的中文播客播放器'
+
+tags: ['ios', 'planned']

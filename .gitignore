@@ -1,0 +1,13 @@
+node_modules/
+.DS_Store
+
+# 机密：浏览器 cookies、API key 等，永不提交
+secrets/
+config.env
+
+# 大文件与构建产物
+apps/pipeline/.venv/
+apps/pipeline/episodes/*/source.mp3
+apps/pipeline/episodes/*/zh.mp3
+__pycache__/
+dist/
