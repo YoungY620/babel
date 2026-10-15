@@ -24,9 +24,12 @@ fi
 [ "$(id -u "$RUNNER_USER")" != 0 ]
 [ "$(id -Gn "$RUNNER_USER")" = "$RUNNER_USER" ]
 [ "$(getent passwd "$RUNNER_USER" | cut -d: -f6)" = "$RUNNER_HOME" ]
-if command -v sudo >/dev/null && sudo -n -l -U "$RUNNER_USER" >/dev/null 2>&1; then
-  echo 'Refusing a runner account with sudo privileges.' >&2
-  exit 1
+if command -v sudo >/dev/null; then
+  sudo_listing=$(LC_ALL=C sudo -n -l -U "$RUNNER_USER" 2>&1 || true)
+  if [[ "$sudo_listing" != *"is not allowed to run sudo"* ]]; then
+    echo 'Refusing a runner account whose lack of sudo privileges cannot be verified.' >&2
+    exit 1
+  fi
 fi
 if [ -f "$RUNNER_HOME/runner/.runner" ]; then
   echo 'Runner already registered; refusing to replace its identity.' >&2
@@ -35,7 +38,7 @@ fi
 
 if [ "$MODE" = prepare ]; then
   apt-get update
-  apt-get install -y ca-certificates curl ffmpeg gh git libicu-dev
+  apt-get install -y ca-certificates curl ffmpeg gh git python3 libicu-dev liblttng-ust1t64 libkrb5-3 zlib1g libssl3t64
   owner=${REPOSITORY%/*}
   runuser -u "$RUNNER_USER" -- git config --global user.name "$owner"
   runuser -u "$RUNNER_USER" -- git config --global user.email "$owner@users.noreply.github.com"
@@ -64,9 +67,28 @@ runuser -u "$RUNNER_USER" -- tee .env >/dev/null <<ENV
 RUNNER_TOOL_CACHE=$RUNNER_HOME/tools
 AGENT_TOOLSDIRECTORY=$RUNNER_HOME/tools
 ENV
-./svc.sh install "$RUNNER_USER"
-service=$(cat .service)
-[[ "$service" =~ ^actions\.runner\.[A-Za-z0-9_.-]+\.service$ ]]
+# Never execute files writable by the runner as root.
+service=actions.runner.babel-ubuntu.service
+cat > "/etc/systemd/system/$service" <<ENV
+[Unit]
+Description=Babel GitHub Actions runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=$RUNNER_USER
+Group=$RUNNER_USER
+WorkingDirectory=$RUNNER_HOME/runner
+ExecStart=$RUNNER_HOME/runner/runsvc.sh
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=300
+
+[Install]
+WantedBy=multi-user.target
+ENV
+printf '%s\n' "$service" | runuser -u "$RUNNER_USER" -- tee .service >/dev/null
 mkdir -p "/etc/systemd/system/$service.d"
 cat > "/etc/systemd/system/$service.d/resources.conf" <<ENV
 [Service]
@@ -84,5 +106,5 @@ ProtectHome=true
 UMask=0077
 ENV
 systemctl daemon-reload
-./svc.sh start
+systemctl enable --now "$service"
 systemctl is-active "$service"
