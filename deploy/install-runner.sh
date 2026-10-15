@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Root on Ubuntu x86_64. Prepare first; then register with a fresh token on stdin.
+# Root on Ubuntu 26.04 x86_64. Prepare first; then register with a fresh token on stdin.
 set -euo pipefail
 [ "$(id -u)" = 0 ]
 [ "$(uname -m)" = x86_64 ]
 . /etc/os-release
 [ "$ID" = ubuntu ]
+[ "$VERSION_ID" = 26.04 ] # Match the shared production host; no older-release compatibility.
 MODE="${1:?Usage: install-runner.sh prepare|register [owner/repo]}"
 [[ "$MODE" = prepare || "$MODE" = register ]]
 REPOSITORY="${2:-YoungY620/babel-runner}"

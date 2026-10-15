@@ -23,11 +23,14 @@ YouTube/B 站外链。
 
 ## D4 调度：GitHub Actions 编排 + Ubuntu self-hosted runner
 
-GitHub Actions 负责调度、重试与发布。计算在与 Research Agent 共用的阿里云
-Ubuntu x86_64 服务器上，通过独立用户和 systemd runner 服务执行。
+GitHub Actions 负责调度、重试与发布。常驻 runner 仅注册到私有执行控制仓库
+`YoungY620/babel-runner`；公开仓库仅使用 GitHub 托管 runner，避免公开 PR 选择生产主机。
+计算在与 Research Agent 共用的阿里云
+Ubuntu 26.04 x86_64 服务器上，通过独立用户和 systemd runner 服务执行。
 只支持 Python 3.12 与 CPU int8 faster-whisper；默认单集、单转录进程、两线程。
-移除 MLX、Homebrew 和旧 CLI 别名，不保留旧平台兼容层。每周二 12:00（北京）首跑，失败当天 17:00 重试，之后每天 12:00/17:00，
-直到本周成功（state.json 按 ISO 周去重）。
+移除 MLX、Homebrew 和旧 CLI 别名，不保留旧平台兼容层。
+控制工作流源文件随公共代码审查后部署到私有仓库。安装阶段仅手动执行；
+每天北京时间 00:00 的日调度与 20 小时执行预算在后续容量验收步骤启用。
 
 ## D5 周期选集：全量未处理 + 联合上限
 
@@ -56,7 +59,7 @@ Ubuntu x86_64 服务器上，通过独立用户和 systemd runner 服务执行�
 
 ## D8 隐私：公开仓库三件套
 
-仓库/Pages/Releases 全公开。标准见 PRIVACY.md；执行：
+产品代码仓库、Pages 和 Releases 公开；执行控制仓库必须保持 private。标准见 PRIVACY.md；执行：
 `scripts/privacy_check.sh`（本地+CI 共用）+ `.githooks/pre-push` 拦截。
 git 身份只用 noreply 邮箱；已重写历史抹除早期含真实邮箱的提交。
 
@@ -77,4 +80,4 @@ moon 只负责项目/任务登记与调度（根项目、apps/pipeline、apps/we
 补充（D4 断点续跑）：转录按切片、TTS 按合成块、翻译按分块分别落盘
 （.transcribe_parts/、.tts_parts/、transcript_zh.json 增量保存），
 中断后重跑从断点继续；convert.yml 加 concurrency 组防止两个周期重入。
-重试点为每天 12:00/17:00（北京）。
+安装验收阶段不自动启动转换。

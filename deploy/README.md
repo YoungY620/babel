@@ -14,7 +14,8 @@
 
 ## 安装和验收
 
-在共享 Ubuntu x86_64 主机上，以 root 先运行 `bash install-runner.sh prepare`。
+仅支持生产机所用的 Ubuntu 26.04 x86_64；其他版本在修改主机前直接拒绝。
+在共享主机上，以 root 先运行 `bash install-runner.sh prepare`。
 依赖与已校验的 runner 安装包就绪后，为私有仓库请求新的临时注册 token，通过标准输入传给 `bash install-runner.sh register`。
 两阶段避免下载消耗注册 token 的有效期。token 不放入进程参数、历史或 Git。
 安装器只接受固定的私有控制仓库；注册前仍需在 GitHub API 确认仓库的 `private` 字段为 true。
