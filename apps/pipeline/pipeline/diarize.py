@@ -1,92 +1,156 @@
 #!/usr/bin/env python3
-"""说话人分离：给 transcript_en.json 的每段打上 speaker 标签。
-
-用 resemblyzer 提取各段声纹嵌入，凝聚聚类成 N 类（默认取 shows.json 里
-该节目的 expected_speakers，缺省 2）。结果直接写回 transcript_en.json
-（每段加 "speaker": "SPEAKER_00" ...），并输出 diarization.json 摘要。
-
-Usage: diarize.py <slug> [--speakers N]
-"""
-import argparse, json, subprocess, sys, tempfile
+"""Source-bound speaker assignment with resumable CPU embeddings."""
+import argparse
+import json
+import math
+import tempfile
+from collections import defaultdict
 from pathlib import Path
+
+from fetch import get_show
 from paths import data_root, episode_directory
+from transcribe import is_current as raw_current, raw_digest
+from tts import digest, file_hash, save, ffmpeg
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "pipeline"))
-from fetch import get_show  # noqa: E402
+MODEL = "resemblyzer-0.1.4"
+POLICY = "ward-cut-tree/longest-speaker-first/short-context/v1"
 
 
-def expected_speakers(slug: str) -> int:
-    meta = json.loads((episode_directory(data_root(ROOT), slug) / "meta.json").read_text())
+def read_object(path):
     try:
-        show = get_show(meta.get("show", ""))
-        return int(show.get("expected_speakers", 2))
-    except SystemExit:
-        return 2
+        value = json.loads(path.read_text())
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError):
+        return {}
 
 
-def slice_wav(src: Path, start: float, end: float, out: Path):
-    subprocess.run(["ffmpeg", "-y", "-ss", f"{start:.3f}", "-to", f"{end:.3f}",
-                    "-i", str(src), "-ac", "1", "-ar", "16000", str(out)],
-                   check=True, capture_output=True)
+def speaker_count(directory):
+    settings = directory / "speaker-input.json"
+    if settings.exists():
+        value = json.loads(settings.read_text())
+        count = value.get("speakers") if isinstance(value, dict) else None
+    else:
+        meta = json.loads((directory / "meta.json").read_text())
+        try:
+            count = get_show(meta.get("show", "")).get("expected_speakers", 2)
+        except SystemExit:
+            count = 2
+    if type(count) is not int or count < 1:
+        raise ValueError("Speaker count must be a positive integer")
+    return count
+
+
+def plan(directory):
+    if not raw_current(directory):
+        raise ValueError("Current source-bound raw ASR is required before diarization")
+    rows = json.loads((directory / "transcript_en.json").read_text())
+    if not rows or any(not (math.isfinite(float(row["start"])) and math.isfinite(float(row["end"]))
+                           and 0 <= row["start"] < row["end"]) for row in rows):
+        raise ValueError("Invalid source speech timeline")
+    return {"version": 1, "source": file_hash(directory / "source.mp3"), "raw": raw_digest(rows),
+            "speakers": speaker_count(directory), "model": MODEL, "policy": POLICY}
+
+
+def is_current(directory):
+    try:
+        report = read_object(directory / "diarization.json")
+        return (report.get("fingerprint") == digest(plan(directory))
+                and report.get("transcriptSha256") == file_hash(directory / "transcript_en.json"))
+    except (OSError, ValueError, TypeError, KeyError):
+        return False
+
+
+def cluster_labels(embeddings, count):
+    if len(embeddings) < 2 or count == 1:
+        return [0] * len(embeddings)
+    import numpy as np
+    from scipy.cluster.hierarchy import cut_tree, linkage
+    return [int(label) for label in cut_tree(linkage(np.stack(embeddings), method="ward"),
+                                             n_clusters=min(count, len(embeddings))).ravel()]
+
+
+def assign_speakers(rows, embeddings, count):
+    if not rows or len(rows) != len(embeddings) or count < 1:
+        raise ValueError("Speaker evidence does not match the source segments")
+    valid = [index for index, vector in enumerate(embeddings) if vector is not None]
+    labels = cluster_labels([embeddings[index] for index in valid], count)
+    known = dict(zip(valid, labels))
+    last = labels[0] if labels else 0
+    assigned, seconds = [], defaultdict(float)
+    for index, row in enumerate(rows):
+        last = known.get(index, last)
+        assigned.append(last)
+        seconds[last] += row["end"] - row["start"]
+    names = {label: f"SPEAKER_{index:02d}" for index, label in enumerate(sorted(seconds, key=lambda label: (-seconds[label], label)))}
+    return ([{**row, "speaker": names[label]} for row, label in zip(rows, assigned)],
+            {names[label]: round(duration, 3) for label, duration in seconds.items()})
+
+
+def extract_embeddings(directory, rows, spec):
+    cache = directory / ".speaker_parts"
+    cache.mkdir(exist_ok=True)
+    vectors, encoder = [], None
+    for index, row in enumerate(rows):
+        if row["end"] - row["start"] < .8:
+            vectors.append(None)
+            continue
+        key = digest({"source": spec["source"], "model": MODEL, "start": row["start"], "end": row["end"],
+                      "format": "16k-mono/preprocess-v1"})
+        path = cache / f"{key}.json"
+        record = read_object(path)
+        vector = record.get("vector")
+        valid = (vector is None or isinstance(vector, list) and len(vector) == 256
+                 and all(type(value) in (int, float) and math.isfinite(value) for value in vector))
+        if not ("vector" in record and valid and record.get("sha256") == digest(vector)):
+            from resemblyzer import VoiceEncoder, preprocess_wav
+            with tempfile.TemporaryDirectory(dir=cache, prefix=".embed-") as tmp:
+                audio = Path(tmp) / "speech.wav"
+                ffmpeg("-ss", row["start"], "-i", directory / "source.mp3", "-t", row["end"] - row["start"],
+                       "-ac", "1", "-ar", "16000", audio)
+                wav = preprocess_wav(audio)
+                vector = None
+                if len(wav) >= 4000:
+                    if encoder is None:
+                        encoder = VoiceEncoder(device="cpu")
+                    vector = encoder.embed_utterance(wav).tolist()
+            save(path, {"vector": vector, "sha256": digest(vector)})
+        vectors.append(vector)
+        print(f"Speaker evidence {index + 1}/{len(rows)}", flush=True)
+    return vectors
+
+
+def prepare(directory):
+    if is_current(directory):
+        print("Verified speaker assignment unchanged")
+        return
+    spec = plan(directory)
+    rows = json.loads((directory / "transcript_en.json").read_text())
+    embeddings = extract_embeddings(directory, rows, spec)
+    reliable = sum(vector is not None for vector in embeddings)
+    assigned, seconds = assign_speakers(rows, embeddings, spec["speakers"])
+    save(directory / "transcript_en.json", assigned)
+    save(directory / "diarization.json", {"fingerprint": digest(spec), "model": MODEL,
+         "transcriptSha256": file_hash(directory / "transcript_en.json"), "speakerSeconds": seconds, "reliableSegments": reliable})
+    print(f"Prepared {len(seconds)} speaker groups from {reliable} reliable segments")
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("slug")
-    ap.add_argument("--speakers", type=int, default=None)
-    args = ap.parse_args()
-
-    d = episode_directory(data_root(ROOT), args.slug)
-    segs = json.loads((d / "transcript_en.json").read_text())
-    src = d / "source.mp3"
-    k = args.speakers or expected_speakers(args.slug)
-
-    import numpy as np
-    from resemblyzer import VoiceEncoder, preprocess_wav
-
-    enc = VoiceEncoder()
-    embeds = []
-    with tempfile.TemporaryDirectory() as td:
-        for i, s in enumerate(segs):
-            if s["end"] - s["start"] < 0.8:      # 太短的段声纹不稳，跳过
-                embeds.append(None)
-                continue
-            w = Path(td) / f"s{i}.wav"
-            slice_wav(src, s["start"], s["end"], w)
-            wav = preprocess_wav(w)
-            if len(wav) < 4000:
-                embeds.append(None)
-                continue
-            embeds.append(enc.embed_utterance(wav))
-            print(f"\rembed {i+1}/{len(segs)}", end="", flush=True)
-    print()
-
-    from scipy.cluster.hierarchy import fcluster, linkage
-    valid = [i for i, e in enumerate(embeds) if e is not None]
-    X = np.stack([embeds[i] for i in valid])
-    labels = fcluster(linkage(X, method="ward"), t=k, criterion="maxclust")
-    # 按各簇总时长排序，时长最大的叫 SPEAKER_00，依次类推
-    from collections import defaultdict
-    dur = defaultdict(float)
-    for i, lab in zip(valid, labels):
-        dur[lab] += segs[i]["end"] - segs[i]["start"]
-    order = {lab: n for n, (lab, _) in enumerate(
-        sorted(dur.items(), key=lambda kv: -kv[1]))}
-    name_of = {lab: f"SPEAKER_{order[lab]:02d}" for lab in dur}
-
-    last = "SPEAKER_00"
-    for i, s in enumerate(segs):
-        if embeds[i] is not None:
-            s["speaker"] = name_of[labels[valid.index(i)]]
-            last = s["speaker"]
-        else:
-            s["speaker"] = last   # 短段归入上一段的说话人
-
-    (d / "transcript_en.json").write_text(json.dumps(segs, ensure_ascii=False, indent=1))
-    summary = {name_of[lab]: round(dur[lab] / 60, 1) for lab in dur}
-    (d / "diarization.json").write_text(json.dumps(summary, indent=1))
-    print(f"OK speakers: {summary} -> {d}")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("slug")
+    parser.add_argument("--speakers", help="Positive count override, retained until --speakers auto")
+    args = parser.parse_args()
+    directory = episode_directory(data_root(ROOT), args.slug)
+    if args.speakers == "auto":
+        (directory / "speaker-input.json").unlink(missing_ok=True)
+    elif args.speakers is not None:
+        try:
+            count = int(args.speakers)
+            if count < 1: raise ValueError()
+        except ValueError:
+            parser.error("--speakers must be a positive integer or auto")
+        save(directory / "speaker-input.json", {"speakers": count})
+    prepare(directory)
 
 
 if __name__ == "__main__":

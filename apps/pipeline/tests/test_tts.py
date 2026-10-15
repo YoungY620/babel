@@ -203,7 +203,13 @@ class SpeechTests(unittest.TestCase):
             def repair(script, slug):
                 if script == "samples.py":
                     (directory / "samples/SPEAKER_01.wav").write_bytes(test_audio())
-            with patch.dict(os.environ, {"BABEL_DATA_DIR": str(root)}), patch.object(convert, "ROOT", root), patch.object(convert, "run", side_effect=repair) as run:
+            import diarize, samples
+            def references_current(path):
+                return all((path / "samples" / f"SPEAKER_{index:02d}.wav").exists() for index in range(2))
+            with patch.dict(os.environ, {"BABEL_DATA_DIR": str(root)}), patch.object(convert, "ROOT", root), \
+                    patch.object(diarize, "is_current", return_value=True), \
+                    patch.object(samples, "is_current", side_effect=references_current), \
+                    patch.object(convert, "run", side_effect=repair) as run:
                 convert.process("episode")
                 self.assertEqual([call.args[0] for call in run.call_args_list], ["transcribe.py", "samples.py", "translate.py", "polish.py", "tts.py"])
                 run.reset_mock()

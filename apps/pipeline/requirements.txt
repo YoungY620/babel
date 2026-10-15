@@ -3,5 +3,5 @@ faster-whisper>=1.2.1
 av>=16,<19
 mutagen
 yt-dlp
-resemblyzer
+resemblyzer==0.1.4
 websocket-client==1.9.2

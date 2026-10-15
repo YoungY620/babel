@@ -111,3 +111,9 @@ moon 只负责项目/任务登记与调度（根项目、apps/pipeline、apps/we
 ## D12 Runtime storage
 
 Private runtime files use one absolute `BABEL_DATA_DIR` shared by all pipeline commands. The Ubuntu control workflow uses `/srv/babel/data`; local development defaults to ignored `apps/pipeline/.data`. Publishing configuration also lives under this data directory. The source checkout contains code and reviewed show/voice configuration, not the authoritative episode state. No fallback reads the previous source-local episode directory. Each episode ID follows the catalog ID syntax; traversal and escaping directory symlinks fail before writes or cleanup.
+
+## D13 Speaker evidence and references
+
+Speaker embeddings resume per source/model/time range. Ward cut-tree honors the configured count up to the number of reliable embeddings; zero or one reliable embedding yields a provisional single group. Group durations include the short segments assigned by context. The source-bound manifest records reliable evidence count and the exact labeled transcript hash. Speaker-count overrides are explicit private inputs, independent of generated output.
+
+Stock-voice references include short speech and are fingerprinted against the source, labeled transcript, duration and explicit `voice-references` inputs. Actual WAV hashes protect generated samples. The unified publication gate checks speaker assignment and, in automatic voice mode, current references as well as text, metadata and synthesized audio. No identity or voice cloning is inferred from group IDs.

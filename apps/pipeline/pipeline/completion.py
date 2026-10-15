@@ -3,12 +3,19 @@
 from paths import data_root, episode_directory
 import argparse
 from pathlib import Path
+from diarize import is_current as speakers_current
+from samples import is_current as references_current
+from tts import voice_mode
 from polish import is_current as metadata_current
 from tts import is_current as speech_current
 
 
 def is_current(directory):
-    return metadata_current(directory) and speech_current(directory)
+    try:
+        return (speakers_current(directory) and (voice_mode(directory) != "auto" or references_current(directory))
+                and metadata_current(directory) and speech_current(directory))
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
 
 
 if __name__ == "__main__":
