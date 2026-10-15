@@ -56,6 +56,9 @@ def main():
             out = out_dir / f"{sp}.wav"
             subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0",
                             "-i", str(lst), str(out)], check=True, capture_output=True)
+        # F5-TTS 等克隆模型需要样本对应的文字
+        (out_dir / f"{sp}.txt").write_text(
+            " ".join(s["text"].strip() for s in picked))
         print(f"OK {sp}: {total:.0f}s from {len(picked)} segments -> {out}")
 
 

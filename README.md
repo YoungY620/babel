@@ -35,7 +35,7 @@ git config core.hooksPath .githooks   # 启用推送前隐私拦截
 cd apps/pipeline
 /opt/homebrew/bin/python3.12 -m venv .venv   # 需要 3.10–3.12
 .venv/bin/pip install "numpy<2" edge-tts faster-whisper mutagen yt-dlp \
-  resemblyzer "coqui-tts[codec]" "transformers>=4.57,<5" "setuptools<81" pypinyin
+  resemblyzer "coqui-tts[codec]" "transformers>=4.57,<5" "setuptools<81" pypinyin mlx-whisper
 curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos \
   -o .venv/bin/yt-dlp && chmod +x .venv/bin/yt-dlp
 cp config.env.example config.env   # 填 GitHub 账号信息
