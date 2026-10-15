@@ -90,3 +90,45 @@ def speech(text, voice, model, instructions):
     finally:
         if socket is not None:
             socket.close()
+
+
+def transcribe_audio(path, model="gpt-transcribe"):
+    """Recorded-speech transcription with the current plural languages field."""
+    import uuid
+    if path.stat().st_size > 25_000_000:
+        raise ValueError("ASR input exceeds the provider file limit")
+    suffix = path.suffix.lower()
+    if suffix not in {".mp3", ".wav"}:
+        raise ValueError("ASR input must be MP3 or WAV")
+    mime = "audio/wav" if suffix == ".wav" else "audio/mpeg"
+    boundary = "babel-" + uuid.uuid4().hex
+    fields = b""
+    for name, value in [("model", model), ("languages[]", "en")]:
+        fields += (f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n').encode()
+    fields += (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="audio{suffix}"\r\n'
+               f'Content-Type: {mime}\r\n\r\n').encode() + path.read_bytes()
+    fields += f"\r\n--{boundary}--\r\n".encode()
+    result = json.loads(request("audio/transcriptions", fields, f"multipart/form-data; boundary={boundary}"))
+    if not isinstance(result.get("text"), str) or not result["text"].strip():
+        raise RuntimeError("ASR provider returned no reliable transcript")
+    return result
+
+
+def structured(instructions, content, schema, name, model):
+    """One stateless, schema-constrained response; refuse partial/refusal output."""
+    response = json_request("responses", {
+        "model": model, "store": False, "reasoning": {"effort": "medium"},
+        "instructions": instructions, "input": json.dumps(content, ensure_ascii=False),
+        "text": {"format": {"type": "json_schema", "name": name, "strict": True, "schema": schema}},
+    })
+    if response.get("status") != "completed":
+        raise RuntimeError("Text model did not complete its response")
+    if any(part.get("type") == "refusal" for item in response.get("output", [])
+           for part in item.get("content", [])):
+        raise RuntimeError("Text model refused its response")
+    texts = [part["text"] for item in response.get("output", []) if item.get("type") == "message"
+             for part in item.get("content", []) if part.get("type") == "output_text"]
+    try:
+        return json.loads("".join(texts))
+    except (ValueError, TypeError):
+        raise RuntimeError("Text model returned no valid structured result") from None

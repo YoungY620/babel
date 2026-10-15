@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "pipeline"))
 spec = importlib.util.spec_from_file_location(
     'transcribe', Path(__file__).parents[1] / 'pipeline/transcribe.py')
 transcribe = importlib.util.module_from_spec(spec)
@@ -38,6 +39,7 @@ class CheckpointTest(unittest.TestCase):
             (episode / 'source.mp3').touch()
             for n in range(2):
                 (parts / f'part{n:03d}.mp3').touch()
+            transcribe.save(parts / 'plan.json', transcribe.source_plan(episode))
             cached = [{'start': 0, 'end': 1, 'text': 'first'}]
             (parts / 'part000.json').write_text(json.dumps(cached))
             mutagen = SimpleNamespace(File=lambda _: SimpleNamespace(
@@ -83,3 +85,35 @@ class CheckpointTest(unittest.TestCase):
                     transcribe.main()
                 self.assertFalse((episode / '.transcribe_parts').exists())
                 self.assertFalse(list(episode.glob('.transcribe_split-*')))
+
+    def test_source_model_and_raw_content_invalidate_cache_but_speaker_tags_do_not(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            source = directory / 'source.mp3'
+            source.write_bytes(b'first recording')
+            rows = [{'start': 0, 'end': 1, 'text': 'first'}]
+            transcribe.save(directory / 'transcript_en.json', rows)
+            transcribe.save(directory / 'transcribe.json', {
+                'plan': transcribe.source_plan(directory), 'rawSha256': transcribe.raw_digest(rows)})
+            self.assertTrue(transcribe.is_current(directory))
+            rows[0]['speaker'] = 'SPEAKER_00'
+            transcribe.save(directory / 'transcript_en.json', rows)
+            self.assertTrue(transcribe.is_current(directory))
+            self.assertFalse(transcribe.is_current(directory, 'other-model'))
+            source.write_bytes(b'other recording')
+            self.assertFalse(transcribe.is_current(directory))
+            source.write_bytes(b'first recording')
+            rows[0]['text'] = 'changed'
+            transcribe.save(directory / 'transcript_en.json', rows)
+            self.assertFalse(transcribe.is_current(directory))
+
+    def test_path_escape_is_rejected_before_removing_artifacts(self):
+        from paths import episode_directory
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            outside = root / 'outside'
+            outside.mkdir()
+            (root / 'episodes').mkdir()
+            (root / 'episodes/link').symlink_to(outside, target_is_directory=True)
+            for slug in ['../outside', '.', 'link']:
+                self.assertRaises(ValueError, episode_directory, root, slug)

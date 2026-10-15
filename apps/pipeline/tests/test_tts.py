@@ -149,7 +149,10 @@ class SpeechTests(unittest.TestCase):
                 (directory / "meta.json").write_text(json.dumps({
                     "slug": slug, "title": slug, "pubDate": "Fri, 16 Oct 2026 00:00:00 GMT"}))
                 if slug == "approved":
-                    manifest = tts.render(directory, segments, "cedar")
+                    from quality_fixture import approve
+                    approve(directory)
+                    approved = json.loads((directory / "transcript_zh.json").read_text())
+                    manifest = tts.render(directory, approved, "cedar")
                 else:
                     (directory / "zh.mp3").write_bytes(b"unverified legacy audio")
             fake = root / "bin"
@@ -193,10 +196,10 @@ class SpeechTests(unittest.TestCase):
                     (directory / "samples/SPEAKER_01.wav").write_bytes(test_audio())
             with patch.object(convert, "ROOT", root), patch.object(convert, "run", side_effect=repair) as run:
                 convert.process("episode")
-                self.assertEqual([call.args[0] for call in run.call_args_list], ["samples.py", "tts.py"])
+                self.assertEqual([call.args[0] for call in run.call_args_list], ["transcribe.py", "samples.py", "translate.py", "polish.py", "tts.py"])
                 run.reset_mock()
                 convert.process("episode")
-                self.assertEqual([call.args[0] for call in run.call_args_list], ["tts.py"])
+                self.assertEqual([call.args[0] for call in run.call_args_list], ["transcribe.py", "translate.py", "polish.py", "tts.py"])
 
 
 if __name__ == "__main__":

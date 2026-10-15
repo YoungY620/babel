@@ -29,9 +29,9 @@ def run(script, *args):
 
 
 def is_done(slug: str) -> bool:
-    from tts import is_current
+    from completion import is_current
     directory = ROOT / "episodes" / slug
-    return is_current(directory) and (directory / "article_zh.md").exists()
+    return is_current(directory)
 
 
 CAP_HOURS, CAP_COUNT = 8, 5
@@ -78,7 +78,8 @@ def cycle_targets():
 
 def process(slug: str):
     d = ROOT / "episodes" / slug
-    if not (d / "transcript_en.json").exists():
+    from transcribe import is_current as raw_current
+    if not raw_current(d):
         run("transcribe.py", slug)
     else:
         print("skip transcribe (exists)")
@@ -93,23 +94,9 @@ def process(slug: str):
         run("samples.py", slug)
     else:
         print("skip samples (complete or explicit preset)")
-    zh_p = d / "transcript_zh.json"
-    zh_done = zh_p.exists() and all(
-        s.get("text_zh") for s in json.loads(zh_p.read_text()))
-    if not zh_done:
-        if not os.environ.get("OPENAI_API_KEY"):
-            sys.exit("需要 OPENAI_API_KEY 才能翻译（或手工提供 transcript_zh.json）")
-        run("translate.py", slug)
-    else:
-        print("skip translate (exists)")
-    run("tts.py", slug)  # Model/text/voice fingerprints decide whether audio can be reused.
-    if not (d / "article_zh.md").exists():
-        if os.environ.get("OPENAI_API_KEY"):
-            run("polish.py", slug)
-        else:
-            print("skip polish (no OPENAI_API_KEY，可后续手工按 skills/babel-humanize 补)")
-    else:
-        print("skip polish (exists)")
+    run("translate.py", slug)
+    run("polish.py", slug)
+    run("tts.py", slug)
 
 
 def main():

@@ -8,7 +8,7 @@ Usage: build_feed.py
 """
 import json, html, os, urllib.request
 from pathlib import Path
-from tts import is_current
+from completion import is_current
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 

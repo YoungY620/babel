@@ -3,7 +3,8 @@ import { z } from 'zod';
 export const locales = ['zh-CN', 'en'] as const;
 export type Locale = typeof locales[number];
 const text = z.string().trim().min(1).max(100_000);
-export const localized = z.strictObject({ 'zh-CN': text, en: text });
+const localizedText = (limit: number) => z.strictObject({ 'zh-CN': z.string().trim().min(1).max(limit), en: z.string().trim().min(1).max(limit) });
+export const localized = localizedText(100_000);
 const id = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(160);
 const sha = z.string().regex(/^[a-f0-9]{64}$/);
 const seconds = z.number().finite().nonnegative();
@@ -18,12 +19,14 @@ const detailPath = z.string().regex(/^episodes\/[a-z0-9-]+\/detail\.json$/);
 const captionPath = z.string().regex(/^episodes\/[a-z0-9-]+\/(?:zh-CN|en)\.vtt$/);
 const quality = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('verified-podcast'), model: text, reviewModel: text,
-    reviewedUnits: z.number().int().positive() }),
+    reviewedUnits: z.number().int().positive(),
+    text: z.strictObject({ asrModel: text, writerModel: text, reviewModel: text,
+      sourceSha256: sha, rawTranscriptSha256: sha, transcriptSha256: sha }) }),
   z.strictObject({ kind: z.literal('reference-preview'), model: text, voice: text,
     method: z.literal('reference-asr'), characterErrorRate: z.number().min(0).max(1) }),
 ]);
 export const episodeSchema = z.strictObject({
-  id, seriesId: id, title: localized, summary: localized,
+  id, seriesId: id, title: localizedText(500), summary: localizedText(2000),
   publishedAt: z.iso.datetime(), sourceUrl: https.optional(), cover,
   audio: z.strictObject({ url: https, sha256: sha, bytes: z.number().int().positive(),
     durationSeconds: seconds.positive(), language: z.literal('zh-CN'), synthetic: z.literal(true) }),
@@ -31,7 +34,7 @@ export const episodeSchema = z.strictObject({
   captions: z.strictObject({ 'zh-CN': captionPath, en: captionPath }),
 });
 export const seriesSchema = z.strictObject({
-  id, title: localized, summary: localized, cover,
+  id, title: localizedText(500), summary: localizedText(2000), cover,
   links: z.array(z.strictObject({ label: localized, url: https })).max(10),
 });
 export const catalogSchema = z.strictObject({
@@ -53,7 +56,7 @@ export const catalogSchema = z.strictObject({
 });
 export const detailSchema = z.strictObject({
   schemaVersion: z.literal(1), episodeId: id,
-  article: localized,
+  article: localizedText(2_000_000),
   cues: z.array(z.strictObject({ start: seconds, end: seconds.positive(), speaker: text, text: localized })),
 }).superRefine((detail, ctx) => {
   let end = 0;
