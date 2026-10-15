@@ -25,7 +25,7 @@ export OPENAI_API_KEY=...            # 翻译、预设语音与音频校验
 - 不克隆原声，不自动降级到旧后端。候选音色见 `voice-presets.json`。
 - 样本在 `episodes/<slug>/samples/SPEAKER_XX.wav`，可替换成更干净的片段。
 - SPEAKER_00 是本集说话时长最长者；该编号不能当作跨集人物身份。
-- `tts.py <slug> --voice cedar` 可明确指定音色；否则依据可听到的风格自动选择。
+- `tts.py <slug> --voice cedar` 可明确指定音色；显式选择会保留；`--voice auto` 重新启用自动选择。
 - 必须检查 `speech.json` 的版本指纹和审核结果；仅有旧 `zh.mp3` 不算完成。
 - 音频质量审核失败时修正原文或音色后重跑，不跳过审核，也不发布未通过产物。
 

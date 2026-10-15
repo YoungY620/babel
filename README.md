@@ -81,7 +81,7 @@ bash pipeline/publish.sh                        # 发布到 Pages + Releases
 ## 预设音色与质量检查
 
 每位说话人使用固定的预设音色。通过短语音样本判断可听到的音域、音色和表达风格，
-在候选男声、女声中匹配；不克隆声音，不判断真实身份。也可用 `tts.py <slug> --voice cedar` 明确指定。
+在候选男声、女声中匹配；不克隆声音，不判断真实身份。也可用 `tts.py <slug> --voice cedar` 明确指定。显式指定会保留；`--voice auto` 重新启用自动音色选择。
 候选音色和风格描述集中在 `apps/pipeline/voice-presets.json`。
 
 - TTS 使用 OpenAI 当前推荐模型的固定快照 `gpt-4o-mini-tts-2025-12-15`。

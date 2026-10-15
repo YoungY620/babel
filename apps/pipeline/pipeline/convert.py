@@ -86,10 +86,13 @@ def process(slug: str):
         run("diarize.py", slug)
     else:
         print("skip diarize (exists)")
-    if not (d / "samples").is_dir() or not any((d / "samples").glob("*.wav")):
+    from tts import voice_mode
+    speakers = {s.get("speaker", "SPEAKER_00") for s in json.loads((d / "transcript_en.json").read_text())}
+    samples = [d / "samples" / f"{speaker}.wav" for speaker in speakers]
+    if voice_mode(d) == "auto" and not all(p.is_file() and p.stat().st_size > 44 for p in samples):
         run("samples.py", slug)
     else:
-        print("skip samples (exists)")
+        print("skip samples (complete or explicit preset)")
     zh_p = d / "transcript_zh.json"
     zh_done = zh_p.exists() and all(
         s.get("text_zh") for s in json.loads(zh_p.read_text()))

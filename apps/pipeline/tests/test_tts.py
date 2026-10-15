@@ -43,7 +43,7 @@ class SpeechTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")
     def test_real_audio_cache_invalidation_and_failed_verification(self):
-        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"TTS_VOICE": "cedar"}), \
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"TTS_VOICE": ""}), \
                 patch.object(tts, "request", return_value=test_audio()) as synth, \
                 patch.object(tts, "verify_audio", return_value={"passed": True, "issues": []}):
             directory = Path(tmp)
@@ -53,12 +53,26 @@ class SpeechTests(unittest.TestCase):
             self.assertTrue(tts.is_current(directory))
             self.assertGreater(first["units"][0]["end"], 1.3)  # Interior silence survives trimming.
             self.assertLess(first["units"][0]["end"], 1.6)
-            tts.render(directory, segments, "cedar")
+            self.assertEqual(first["voice_mode"], "cedar")
+            shutil.rmtree(directory / ".speech_parts")
+            audio = directory / "zh.mp3"
+            stat = audio.stat()
+            os.utime(audio, ns=(stat.st_atime_ns, stat.st_mtime_ns + 2_000_000_000))
+            self.assertFalse(tts.is_current(directory))
+            with patch.object(tts, "select_voices", side_effect=AssertionError("completed output must not reselect voices")):
+                tts.render(directory, segments)
+            self.assertTrue(tts.is_current(directory))
             self.assertEqual(synth.call_count, 1)
+            saved = json.loads((directory / "speech.json").read_text())
+            for review in [None, {**saved["verification"], "passed": False}]:
+                invalid = {**saved, "verification": review}
+                (directory / "speech.json").write_text(json.dumps(invalid))
+                self.assertFalse(tts.is_current(directory))
+            (directory / "speech.json").write_text(json.dumps(saved))
             segments[0]["text_zh"] = "新的文字，新的配音。"
             (directory / "transcript_zh.json").write_text(json.dumps(segments))
             self.assertFalse(tts.is_current(directory))
-            second = tts.render(directory, segments, "cedar")
+            second = tts.render(directory, segments)
             self.assertNotEqual(first["fingerprint"], second["fingerprint"])
             self.assertEqual(synth.call_count, 2)
             with patch.dict(os.environ, {"TTS_MODEL": "different-model"}):
@@ -71,6 +85,47 @@ class SpeechTests(unittest.TestCase):
             self.assertEqual(json.loads((directory / "speech.json").read_text())["fingerprint"], second["fingerprint"])
             self.assertEqual(tts.file_hash(directory / "zh.mp3"), second["audio_sha256"])
             self.assertFalse(tts.is_current(directory))
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")
+    def test_auto_voice_output_survives_disposable_cache_removal(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"TTS_VOICE": ""}), \
+                patch.object(tts, "request", return_value=test_audio()) as synth, \
+                patch.object(tts, "verify_audio", return_value={"passed": True, "issues": []}):
+            directory = Path(tmp)
+            (directory / "samples").mkdir()
+            (directory / "samples/SPEAKER_00.wav").write_bytes(test_audio())
+            segments = [{"speaker": "SPEAKER_00", "text_zh": "语义清楚，音色一致。"}]
+            (directory / "transcript_zh.json").write_text(json.dumps(segments))
+            with patch.object(tts, "select_voices", return_value={"SPEAKER_00": "cedar"}):
+                first = tts.render(directory, segments)
+            shutil.rmtree(directory / ".speech_parts")
+            with patch.object(tts, "select_voices", side_effect=AssertionError("unexpected paid voice analysis")):
+                second = tts.render(directory, segments)
+            self.assertEqual(first["fingerprint"], second["fingerprint"])
+            self.assertEqual(synth.call_count, 1)
+            self.assertTrue(tts.is_current(directory))
+
+    def test_retry_repairs_a_partial_speaker_sample_directory(self):
+        import convert
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"TTS_VOICE": ""}):
+            root = Path(tmp)
+            directory = root / "episodes/episode"
+            (directory / "samples").mkdir(parents=True)
+            segments = [{"speaker": f"SPEAKER_{i:02d}", "text": "hello", "text_zh": "你好。"} for i in range(2)]
+            for name in ["transcript_en.json", "transcript_zh.json"]:
+                (directory / name).write_text(json.dumps(segments))
+            (directory / "diarization.json").write_text("{}")
+            (directory / "article_zh.md").write_text("你好。")
+            (directory / "samples/SPEAKER_00.wav").write_bytes(test_audio())
+            def repair(script, slug):
+                if script == "samples.py":
+                    (directory / "samples/SPEAKER_01.wav").write_bytes(test_audio())
+            with patch.object(convert, "ROOT", root), patch.object(convert, "run", side_effect=repair) as run:
+                convert.process("episode")
+                self.assertEqual([call.args[0] for call in run.call_args_list], ["samples.py", "tts.py"])
+                run.reset_mock()
+                convert.process("episode")
+                self.assertEqual([call.args[0] for call in run.call_args_list], ["tts.py"])
 
 
 if __name__ == "__main__":

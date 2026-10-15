@@ -36,14 +36,14 @@ def main():
         picked, total = [], 0.0
         for s in ss:
             dur = s["end"] - s["start"]
-            if dur < 2.0:
+            if dur < 0.8:
                 continue
             clip = {**s, "end": min(s["end"], s["start"] + args.seconds - total)}
             picked.append(clip)
             total += clip["end"] - clip["start"]
             if total >= args.seconds:
                 break
-        with tempfile.TemporaryDirectory() as td:
+        with tempfile.TemporaryDirectory(dir=out_dir, prefix=".sample-") as td:
             parts = []
             for i, s in enumerate(picked):
                 p = Path(td) / f"p{i}.wav"
@@ -56,7 +56,8 @@ def main():
             lst.write_text("".join(f"file '{p}'\n" for p in parts))
             out = out_dir / f"{sp}.wav"
             subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0",
-                            "-i", str(lst), str(out)], check=True, capture_output=True)
+                            "-i", str(lst), str(Path(td) / "sample.wav")], check=True, capture_output=True)
+            (Path(td) / "sample.wav").replace(out)
         print(f"OK {sp}: {total:.0f}s from {len(picked)} segments -> {out}")
 
 

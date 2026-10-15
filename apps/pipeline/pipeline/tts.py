@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PRESETS = json.loads((ROOT / "voice-presets.json").read_text())
 MODEL = "gpt-4o-mini-tts-2025-12-15"
 AUDIO_MODEL = "gpt-audio-1.5"
+RENDER_VERSION = 2
 INSTRUCTIONS = ("用自然、清晰、连贯的普通话朗读，以知性播客访谈的语气表达。"
                 "按原文标点停顿，保留疑问、感叹和转折语气。准确读出数字、日期、英文缩写和专名。"
                 "不增加、不省略、不改写任何词语。不要读出说明，不要模仿原说话人。")
@@ -158,7 +159,7 @@ def verify_audio(path, text, model):
 
 def render_part(unit, voice, parts, model, verifier):
     spec = {"text": unit["text"], "voice": voice, "model": model,
-            "instructions": INSTRUCTIONS, "verifier": verifier, "trim": TRIM, "version": 1}
+            "instructions": INSTRUCTIONS, "verifier": verifier, "trim": TRIM, "version": RENDER_VERSION}
     key = digest(spec)
     wav, report_path = parts / f"{key}.wav", parts / f"{key}.json"
     if wav.exists() and report_path.exists():
@@ -194,22 +195,47 @@ def loudness(input_args):
     return data
 
 
-def fingerprint(directory, segments, voices, forced=None):
-    references = {} if forced else {
+def load_manifest(directory):
+    try:
+        value = json.loads((directory / "speech.json").read_text())
+        return value if isinstance(value, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def voice_mode(directory, requested=None, manifest=None):
+    manifest = load_manifest(directory) if manifest is None else manifest
+    mode = requested or os.environ.get("TTS_VOICE") or manifest.get("voice_mode", "auto")
+    if mode != "auto" and mode not in PRESETS:
+        raise ValueError("Unknown preset voice mode")
+    return mode
+
+
+def fingerprint(directory, segments, voices, mode):
+    references = {} if mode != "auto" else {
         sp: file_hash(directory / "samples" / f"{sp}.wav") for sp in voices}
     return digest({"segments": segments, "voices": voices, "references": references,
-                   "voice_mode": forced or "auto", "model": os.environ.get("TTS_MODEL", MODEL),
+                   "voice_mode": mode, "model": os.environ.get("TTS_MODEL", MODEL),
                    "verifier": os.environ.get("AUDIO_REVIEW_MODEL", AUDIO_MODEL),
                    "instructions": INSTRUCTIONS, "trim": TRIM, "presets": PRESETS,
-                   "units": speech_units(segments), "normalization": "-16LUFS/-1.5dBTP/128k/24k/mono", "version": 1})
+                   "units": speech_units(segments), "normalization": "-16LUFS/-1.5dBTP/128k/24k/mono",
+                   "version": RENDER_VERSION})
+
+
+def matching_plan(directory, segments, manifest, mode):
+    review = manifest.get("verification", {})
+    return (manifest.get("version") == RENDER_VERSION and isinstance(review, dict)
+            and review.get("passed") is True and review.get("model") == os.environ.get("AUDIO_REVIEW_MODEL", AUDIO_MODEL)
+            and review.get("reviewed_units") == len(speech_units(segments))
+            and manifest["fingerprint"] == fingerprint(directory, segments, manifest["voices"], mode))
 
 
 def is_current(directory):
     try:
-        manifest = json.loads((directory / "speech.json").read_text())
+        manifest = load_manifest(directory)
         segments = json.loads((directory / "transcript_zh.json").read_text())
         audio = (directory / "zh.mp3").stat()
-        return (manifest["fingerprint"] == fingerprint(directory, segments, manifest["voices"], os.environ.get("TTS_VOICE"))
+        return (matching_plan(directory, segments, manifest, voice_mode(directory, manifest=manifest))
                 and manifest["audio_bytes"] == audio.st_size and manifest["audio_mtime_ns"] == audio.st_mtime_ns)
     except (OSError, KeyError, ValueError, TypeError):
         return False
@@ -219,16 +245,24 @@ def render(directory, segments, voice=None):
     model = os.environ.get("TTS_MODEL", MODEL)
     verifier = os.environ.get("AUDIO_REVIEW_MODEL", AUDIO_MODEL)
     units = speech_units(segments)
+    output, manifest_path = directory / "zh.mp3", directory / "speech.json"
+    old = load_manifest(directory)
+    mode = voice_mode(directory, voice, old)
+    try:
+        unchanged = matching_plan(directory, segments, old, mode)
+    except (OSError, KeyError, ValueError, TypeError):
+        unchanged = False
+    if unchanged and output.exists() and old.get("audio_sha256") == file_hash(output):
+        stat = output.stat()
+        old.update(audio_bytes=stat.st_size, audio_mtime_ns=stat.st_mtime_ns)
+        save(manifest_path, old)
+        print("Verified speech unchanged; reused completed output")
+        return old
     parts = directory / ".speech_parts"
     parts.mkdir(exist_ok=True)
-    voices = select_voices(units, directory, parts, verifier, voice)
-    plan_hash = fingerprint(directory, segments, voices, voice)
-    output, manifest = directory / "zh.mp3", directory / "speech.json"
-    if output.exists() and manifest.exists():
-        old = json.loads(manifest.read_text())
-        if old.get("fingerprint") == plan_hash and old.get("audio_sha256") == file_hash(output):
-            print("Verified speech unchanged; reused completed output")
-            return old
+    voices = old["voices"] if unchanged else select_voices(units, directory, parts, verifier, None if mode == "auto" else mode)
+    plan_hash = fingerprint(directory, segments, voices, mode)
+
     timeline, files, cursor = [], [], 0.0
     for i, unit in enumerate(units):
         wav, quality = render_part(unit, voices[unit["speaker"]], parts, model, verifier)
@@ -254,7 +288,7 @@ def render(directory, segments, voice=None):
     final = loudness(["-i", str(temporary)])
     if not (-17 <= float(final["input_i"]) <= -15 and float(final["input_tp"]) <= -1):
         raise ValueError("Final audio failed loudness/peak verification")
-    result = {"fingerprint": plan_hash, "model": model, "verifier": verifier, "voices": voices,
+    result = {"version": RENDER_VERSION, "voice_mode": mode, "fingerprint": plan_hash, "model": model, "verifier": verifier, "voices": voices,
               "audio_sha256": file_hash(temporary), "duration_seconds": duration(temporary),
               "loudness_lufs": float(final["input_i"]), "true_peak_dbtp": float(final["input_tp"]),
               "verification": {"passed": True, "reviewed_units": len(units), "model": verifier},
@@ -262,14 +296,15 @@ def render(directory, segments, voice=None):
     temporary.replace(output)
     stat = output.stat()
     result.update(audio_bytes=stat.st_size, audio_mtime_ns=stat.st_mtime_ns)
-    save(manifest, result)
+    save(manifest_path, result)
     return result
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("slug")
-    ap.add_argument("--voice", choices=PRESETS, default=os.environ.get("TTS_VOICE"))
+    ap.add_argument("--voice", choices=[*PRESETS, "auto"], default=os.environ.get("TTS_VOICE"),
+                    help="Preset override; auto clears a saved override. Unset retains the saved mode.")
     args = ap.parse_args()
     directory = (ROOT / "episodes" / args.slug).resolve()
     if not directory.is_relative_to((ROOT / "episodes").resolve()):
