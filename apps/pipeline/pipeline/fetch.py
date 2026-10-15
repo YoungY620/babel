@@ -8,9 +8,9 @@ Usage:
 import argparse, json, re, urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from paths import data_root, episode_directory
 
 ROOT = Path(__file__).resolve().parent.parent
-EPISODES = ROOT / "episodes"
 ITUNES = "{http://www.itunes.com/dtds/podcast-1.0.dtd}"
 
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -90,7 +90,7 @@ def download(show, index: int) -> str:
     channel, items = load_feed(show["rss"])
     it = items[index]
     slug = slugify(it["title"])
-    d = EPISODES / slug
+    d = episode_directory(data_root(ROOT), slug)
     d.mkdir(parents=True, exist_ok=True)
     meta = {**it, "slug": slug, "show": show["id"], "source": show["rss"],
             "show_name": channel["title"], "show_description": channel["description"],

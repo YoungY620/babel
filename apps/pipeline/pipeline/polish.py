@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Publishable bilingual metadata and complete articles from the approved script."""
-from paths import episode_directory
+from paths import data_root, episode_directory
 import argparse
 import json
 from pathlib import Path
@@ -98,7 +98,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("slug")
     args = parser.parse_args()
-    prepare(episode_directory(ROOT, args.slug))
+    prepare(episode_directory(data_root(ROOT), args.slug))
 
 
 if __name__ == "__main__":

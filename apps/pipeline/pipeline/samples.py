@@ -6,6 +6,7 @@ Usage: samples.py <slug> [--seconds 60]
 """
 import argparse, json, subprocess, tempfile
 from pathlib import Path
+from paths import data_root, episode_directory
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -18,7 +19,7 @@ def main():
     if args.seconds < 2:
         ap.error("--seconds must be at least 2")
 
-    d = ROOT / "episodes" / args.slug
+    d = episode_directory(data_root(ROOT), args.slug)
     segs = json.loads((d / "transcript_en.json").read_text())
     src = d / "source.mp3"
     out_dir = d / "samples"

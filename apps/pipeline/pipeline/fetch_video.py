@@ -9,9 +9,9 @@ import argparse, json, os, re, subprocess, sys
 from datetime import datetime, timezone
 from email.utils import format_datetime
 from pathlib import Path
+from paths import data_root, episode_directory
 
 ROOT = Path(__file__).resolve().parent.parent
-EPISODES = ROOT / "episodes"
 
 # prefer the yt-dlp living next to the venv python (usually newer than PATH's)
 _venv_ytdlp = Path(sys.executable).parent / "yt-dlp"
@@ -31,8 +31,8 @@ def main():
 
     extra = os.environ.get("YTDLP_EXTRA_ARGS", "").split()  # e.g. --cookies-from-browser chrome
 
-    # 长期 cookies：monorepo 根 secrets/cookies.txt 存在则自动使用
-    cookies = ROOT.parent.parent / "secrets" / "cookies.txt"
+    # Operator-provided cookie file stays in the private runtime directory.
+    cookies = data_root(ROOT) / "private" / "cookies.txt"
     if cookies.exists() and "--cookies" not in extra and not any(
             a.startswith("--cookies-from-browser") for a in extra):
         extra = ["--cookies", str(cookies), *extra]
@@ -43,7 +43,7 @@ def main():
 
     title = info.get("title", "untitled")
     slug = args.slug or slugify(title)
-    d = EPISODES / slug
+    d = episode_directory(data_root(ROOT), slug)
     d.mkdir(parents=True, exist_ok=True)
 
     # audio track only -> source.mp3 (voice-grade: mono, speech bitrate)

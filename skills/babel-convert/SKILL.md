@@ -5,6 +5,8 @@ description: 巴别塔 Babel — 把已抓取的英文音频转成中文配音�
 
 # babel-convert：转换为中文音频
 
+运行文件位于 `BABEL_DATA_DIR/episodes/<id>`；服务器使用 `/srv/babel/data`，本地默认 `apps/pipeline/.data`。下文产物路径均相对此目录。代码路径仍相对仓库。
+
 工作目录：`apps/pipeline/`。单条命令跑完整链（幂等，缺哪步补哪步）：
 
 ```bash

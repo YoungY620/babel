@@ -168,7 +168,7 @@ class SpeechTests(unittest.TestCase):
                 script.chmod(0o755)
             subprocess.run(["bash", str(root / "pipeline/publish.sh")], check=True,
                            env={**os.environ, "PATH": str(fake) + os.pathsep + os.environ["PATH"],
-                                "COMMAND_LOG": str(log)}, stdout=subprocess.DEVNULL)
+                                "COMMAND_LOG": str(log), "BABEL_DATA_DIR": str(root)}, stdout=subprocess.DEVNULL)
             feed = (root / "docs/feed.xml").read_text()
             asset = "approved-zh-" + manifest["audio_sha256"][:12] + ".mp3"
             self.assertIn(asset, feed)
@@ -203,7 +203,7 @@ class SpeechTests(unittest.TestCase):
             def repair(script, slug):
                 if script == "samples.py":
                     (directory / "samples/SPEAKER_01.wav").write_bytes(test_audio())
-            with patch.object(convert, "ROOT", root), patch.object(convert, "run", side_effect=repair) as run:
+            with patch.dict(os.environ, {"BABEL_DATA_DIR": str(root)}), patch.object(convert, "ROOT", root), patch.object(convert, "run", side_effect=repair) as run:
                 convert.process("episode")
                 self.assertEqual([call.args[0] for call in run.call_args_list], ["transcribe.py", "samples.py", "translate.py", "polish.py", "tts.py"])
                 run.reset_mock()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Single publication gate: source-grounded text, reviewed metadata and audio."""
-from paths import episode_directory
+from paths import data_root, episode_directory
 import argparse
 from pathlib import Path
 from polish import is_current as metadata_current
@@ -15,5 +15,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("slug")
     args = parser.parse_args()
-    directory = episode_directory(Path(__file__).resolve().parent.parent, args.slug)
+    directory = episode_directory(data_root(Path(__file__).resolve().parent.parent), args.slug)
     raise SystemExit(0 if is_current(directory) else 1)

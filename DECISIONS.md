@@ -107,3 +107,7 @@ moon 只负责项目/任务登记与调度（根项目、apps/pipeline、apps/we
 [模型](https://developers.openai.com/api/docs/models)、
 [结构化输出](https://developers.openai.com/api/docs/guides/structured-outputs)。
 这是本项目受测候选配置，不等同于跨供应商的绝对质量排名；真实验收仍需有效云端凭据。
+
+## D12 Runtime storage
+
+Private runtime files use one absolute `BABEL_DATA_DIR` shared by all pipeline commands. The Ubuntu control workflow uses `/srv/babel/data`; local development defaults to ignored `apps/pipeline/.data`. The source checkout contains code and reviewed configuration, not the authoritative episode state. No fallback reads the previous source-local episode directory. Each episode ID follows the catalog ID syntax; traversal and escaping directory symlinks fail before writes or cleanup.

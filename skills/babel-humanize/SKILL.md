@@ -5,6 +5,8 @@ description: 巴别塔 Babel — 中文文字版润色标准（去翻译腔/AI �
 
 # babel-humanize：中文文字版润色标准
 
+运行文件位于 `BABEL_DATA_DIR/episodes/<id>`；服务器使用 `/srv/babel/data`，本地默认 `apps/pipeline/.data`。下文产物路径均相对此目录。代码路径仍相对仓库。
+
 输入：`episodes/<slug>/transcript_zh.json`（带时间戳的分段译文）。
 输出：`episodes/<slug>/article_zh.md`（可发布的可读文章）。
 机器执行入口：`pipeline/polish.py <slug>`；agent 也可直接按本标准手工精修。

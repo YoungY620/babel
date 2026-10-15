@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Repository identity and public publishing metadata for a fresh checkout.
 set -euo pipefail
+umask 077
 cd "$(dirname "$0")/.."
 repository=${1:-${GITHUB_REPOSITORY:?Set GITHUB_REPOSITORY to owner/repo}}
 [[ "$repository" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
+data_dir=$(python3 -c 'from pathlib import Path; import sys; sys.path.insert(0,"apps/pipeline/pipeline"); from paths import data_root; print(data_root(Path("apps/pipeline").resolve()))')
+mkdir -p "$data_dir/episodes"
 owner=${repository%/*}
 repo=${repository#*/}
 git config user.name "$owner"

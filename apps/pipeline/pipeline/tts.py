@@ -13,6 +13,7 @@ import os
 import re
 import subprocess
 from pathlib import Path
+from paths import data_root, episode_directory
 
 from provider import json_request, speech
 
@@ -305,9 +306,7 @@ def main():
     ap.add_argument("--voice", choices=[*PRESETS, "auto"], default=os.environ.get("TTS_VOICE"),
                     help="Preset override; auto clears a saved override. Unset retains the saved mode.")
     args = ap.parse_args()
-    directory = (ROOT / "episodes" / args.slug).resolve()
-    if not directory.is_relative_to((ROOT / "episodes").resolve()):
-        raise ValueError("Invalid episode path")
+    directory = episode_directory(data_root(ROOT), args.slug)
     if args.check:
         raise SystemExit(0 if is_current(directory) else 1)
     segments = json.loads((directory / "transcript_zh.json").read_text())
