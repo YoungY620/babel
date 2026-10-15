@@ -1,10 +1,11 @@
 # Ubuntu runner
 
-在与 Research Agent 共用的 Ubuntu x86_64 主机上，以 root 运行 `install-runner.sh`。
-将 GitHub 仓库 runner 注册 API 返回的临时 token 通过标准输入传入；不要将 token 写入命令历史或 Git。
+在与 Research Agent 共用的 Ubuntu x86_64 主机上，以 root 先运行 `bash install-runner.sh prepare`，安装依赖与 runner。
+准备完成后，才请求 GitHub 仓库 runner 注册 API 的新临时 token，并通过标准输入传给 `bash install-runner.sh register`。
+两个阶段分开，避免依赖下载消耗 token 的一小时有效期；token 不放入进程参数、命令历史或 Git。
 安装包版本和 SHA-256 固定在脚本中，注册完成后由 GitHub runner 自更新。
 
-服务以 `babel-runner` 用户运行，目录为 `/srv/babel`，不加入 sudo 或 Docker 组。
+服务以 `babel-runner` 用户运行，目录为 `/srv/babel`，不加入 sudo 或 Docker 组。若已有同名账号拥有额外组或 sudo 权限，安装器会拒绝使用。
 GitHub 标签为 `self-hosted,Linux,X64,babel`。仅受信任分支的手动任务和定时任务使用该 runner；PR 检查使用 GitHub 托管 runner。
 
 默认限制为最多 2 个 vCPU（四核主机的一半）、8 GiB 内存；6 GiB 后开始回收内存。
