@@ -47,3 +47,13 @@ pnpm moon run pipeline:check pipeline:test
 `completion.py <slug>` 是统一发布检查。转换选集、目录导出、RSS 与上传都要求文本、双语元数据和音频同时通过。模型可用性、真实音质和完整产能仍需有效云端凭据实测，离线模拟测试不能替代该验收。
 
 云端转录固定使用 `gpt-transcribe`，不支持旧模型接口。文本模型配置：`TEXT_MODEL` 与 `TEXT_REVIEW_MODEL`（均默认 `gpt-6-astra`）。使用 Responses 严格 JSON schema，不保留旧翻译模型或无审核降级分支。
+
+## 说话人和音色参考的断点
+
+声纹计算使用固定的 CPU Resemblyzer 0.1.4。每段结果绑定音频哈希、模型和取样范围；中断后复用已完成片段，损坏缓存会重算。零个或一个可靠声纹不进入多样本聚类，暂用单组标签；`diarization.json` 记录可靠片段数和各组秒数。这些编号不是人物身份。
+
+`diarize.py <id> --speakers N` 将明确选择保存在私有 `speaker-input.json`；`--speakers auto` 清除选择，重新使用节目配置。聚类、标签或源音频变化会使相关完成记录失效。
+
+音色参考默认 8 秒，允许保留明确指定的 2–60 秒长度。短语音也可组合，不再把不足 0.8 秒的全部片段丢掉。参考 WAV 和来源/参数都记录在 `samples.json` 中。需要更干净的人工参考时，把 WAV 放到单集的 `voice-references/SPEAKER_XX.wav`；它是明确输入，不直接修改生成的 `samples` 文件。更新输入后，重新运行 `convert.py --slug`。明确选择预设音色时不需要音色参考，但仍检查源转录和说话人记录。
+
+依赖与算法：[Resemblyzer](https://pypi.org/project/Resemblyzer/)、[SciPy cut_tree](https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.cut_tree.html)。

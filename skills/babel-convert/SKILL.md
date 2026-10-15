@@ -26,7 +26,8 @@ export OPENAI_API_KEY=...            # 翻译、预设语音与音频校验
 ## 音色与完成状态
 
 - 不克隆原声，不自动降级到旧后端。候选音色见 `voice-presets.json`。
-- 样本在 `episodes/<slug>/samples/SPEAKER_XX.wav`，可替换成更干净的片段。
+- 生成样本在 `episodes/<slug>/samples/SPEAKER_XX.wav`。人工参考放在同级 `voice-references/SPEAKER_XX.wav`，再跑完整转换；不要直接修改生成样本。
+- `diarize.py <slug> --speakers N` 保留明确的人数输入；`--speakers auto` 恢复节目配置。声纹缓存逐片续跑，人数、源音频或参考变更均检查指纹。
 - SPEAKER_00 是本集说话时长最长者；该编号不能当作跨集人物身份。
 - `tts.py <slug> --voice cedar` 可明确指定音色；显式选择会保留；`--voice auto` 重新启用自动选择。
 - 用 `completion.py <slug>` 核对文本、双语元数据和语音审核的完整指纹；仅有旧 `zh.mp3` 不算完成。

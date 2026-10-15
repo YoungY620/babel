@@ -5,6 +5,7 @@ from unittest.mock import patch
 import text_quality
 import polish
 import transcribe
+import diarize
 
 
 def result(instructions, content, schema, name, model):
@@ -25,6 +26,8 @@ def approve(directory):
         {"start": 0, "end": 1.5, "speaker": "SPEAKER_00", "text": "A faithful sentence."}]))
     raw = json.loads((directory / "transcript_en.json").read_text())
     transcribe.save(directory / "transcribe.json", {"plan": transcribe.source_plan(directory), "rawSha256": transcribe.raw_digest(raw)})
+    with patch.object(diarize, "extract_embeddings", return_value=[None]):
+        diarize.prepare(directory)
     with patch.object(text_quality, "duration", return_value=1.5), patch.dict(os.environ, {"OPENAI_API_KEY": "example"}), \
             patch.object(text_quality, "ffmpeg", side_effect=lambda *args: args[-1].write_bytes(b"audio-fixture")), \
             patch.object(text_quality, "transcribe_audio", return_value={"text": "A faithful sentence."}), \

@@ -10,7 +10,7 @@
 
 各阶段幂等：已存在的产物会跳过。完成后跑 build_feed.py 即可发布。
 """
-import argparse, json, os, subprocess, sys
+import argparse, os, subprocess, sys
 from pathlib import Path
 from paths import data_root, episode_directory
 
@@ -84,14 +84,14 @@ def process(slug: str):
         run("transcribe.py", slug)
     else:
         print("skip transcribe (exists)")
-    if not (d / "diarization.json").exists():
+    from diarize import is_current as speakers_current
+    if not speakers_current(d):
         run("diarize.py", slug)
     else:
         print("skip diarize (exists)")
     from tts import voice_mode
-    speakers = {s.get("speaker", "SPEAKER_00") for s in json.loads((d / "transcript_en.json").read_text())}
-    samples = [d / "samples" / f"{speaker}.wav" for speaker in speakers]
-    if voice_mode(d) == "auto" and not all(p.is_file() and p.stat().st_size > 44 for p in samples):
+    from samples import is_current as references_current
+    if voice_mode(d) == "auto" and not references_current(d):
         run("samples.py", slug)
     else:
         print("skip samples (complete or explicit preset)")
