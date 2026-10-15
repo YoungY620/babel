@@ -8,7 +8,7 @@ Usage: build_feed.py
 """
 import json, html, os, urllib.request
 from pathlib import Path
-from tts import is_current
+from completion import is_current
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 
@@ -145,6 +145,9 @@ def main():
         if not (meta_p.exists() and mp3.exists() and is_current(d)):
             continue
         meta = json.loads(meta_p.read_text())
+        reviewed = json.loads((d / "web.json").read_text())
+        meta["title"] = reviewed["title"]["zh-CN"]
+        meta["description"] = reviewed["summary"]["zh-CN"]
         meta["zh_bytes"] = mp3.stat().st_size
         # 内容哈希进文件名：重渲染必换 URL，客户端/CDN 不会拿到旧音频
         speech = json.loads((d / "speech.json").read_text())
@@ -205,6 +208,10 @@ def main():
 
     # 文字版页面
     art_dir = DOCS / "episodes"
+    approved_articles = {f"{m['slug']}.html" for m in eps if m["article"]}
+    for old in art_dir.glob("*.html"):
+        if old.name not in approved_articles:
+            old.unlink()
     for m in eps:
         if not m["article"]:
             continue

@@ -149,9 +149,15 @@ class SpeechTests(unittest.TestCase):
                 (directory / "meta.json").write_text(json.dumps({
                     "slug": slug, "title": slug, "pubDate": "Fri, 16 Oct 2026 00:00:00 GMT"}))
                 if slug == "approved":
-                    manifest = tts.render(directory, segments, "cedar")
+                    from quality_fixture import approve
+                    approve(directory)
+                    approved = json.loads((directory / "transcript_zh.json").read_text())
+                    manifest = tts.render(directory, approved, "cedar")
                 else:
                     (directory / "zh.mp3").write_bytes(b"unverified legacy audio")
+            (root / "docs/episodes").mkdir(parents=True)
+            (root / "docs/episodes/stale.html").write_text("unreviewed old article")
+            (root / "docs/episodes/orphan.html").write_text("removed episode")
             fake = root / "bin"
             fake.mkdir()
             log = root / "commands.log"
@@ -168,12 +174,18 @@ class SpeechTests(unittest.TestCase):
             self.assertIn(asset, feed)
             self.assertIn(asset, log.read_text())
             self.assertNotIn("stale", feed)
+            self.assertFalse((root / "docs/episodes/stale.html").exists())
+            self.assertFalse((root / "docs/episodes/orphan.html").exists())
+            self.assertTrue((root / "docs/episodes/approved.html").exists())
             self.assertIn("release delete-asset audio stale-zh-12345678.mp3", log.read_text())
             self.assertIn("release delete-asset audio approved-zh-12345678.mp3", log.read_text())
             uploads = [line for line in log.read_text().splitlines() if line.startswith("release upload")]
             self.assertEqual(len(uploads), 1)
             self.assertNotIn("stale", uploads[0])
             self.assertIn("AI 合成配音", feed)
+            self.assertIn("测试节目", feed)
+            self.assertIn("用于自动化测试。", feed)
+            self.assertNotIn("<title>approved", feed)
             self.assertIn("AI 合成配音", (root / "docs/index.html").read_text())
 
     def test_retry_repairs_a_partial_speaker_sample_directory(self):
@@ -193,10 +205,10 @@ class SpeechTests(unittest.TestCase):
                     (directory / "samples/SPEAKER_01.wav").write_bytes(test_audio())
             with patch.object(convert, "ROOT", root), patch.object(convert, "run", side_effect=repair) as run:
                 convert.process("episode")
-                self.assertEqual([call.args[0] for call in run.call_args_list], ["samples.py", "tts.py"])
+                self.assertEqual([call.args[0] for call in run.call_args_list], ["transcribe.py", "samples.py", "translate.py", "polish.py", "tts.py"])
                 run.reset_mock()
                 convert.process("episode")
-                self.assertEqual([call.args[0] for call in run.call_args_list], ["tts.py"])
+                self.assertEqual([call.args[0] for call in run.call_args_list], ["transcribe.py", "translate.py", "polish.py", "tts.py"])
 
 
 if __name__ == "__main__":

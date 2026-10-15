@@ -15,6 +15,35 @@ import provider
 
 
 class ProviderTests(unittest.TestCase):
+    def test_recorded_asr_uses_plural_language_and_a_safe_filename(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            audio = Path(tmp) / "private-source-name.mp3"
+            audio.write_bytes(b"audio-content")
+            with patch.object(provider, "request", return_value=b'{"text":"Evidence"}') as request:
+                self.assertEqual(provider.transcribe_audio(audio)["text"], "Evidence")
+                path, body, mime = request.call_args.args
+                self.assertEqual(path, "audio/transcriptions")
+                self.assertIn(b'name="languages[]"', body)
+                self.assertNotIn(b'name="language"', body)
+                self.assertNotIn(b"private-source-name", body)
+                self.assertIn("multipart/form-data; boundary=", mime)
+            with patch.object(provider, "request", side_effect=AssertionError("unsupported model must fail before HTTP")):
+                self.assertRaises(ValueError, provider.transcribe_audio, audio, "whisper-1")
+            with patch.object(provider, "request", return_value=b'{"text":""}'):
+                self.assertRaises(RuntimeError, provider.transcribe_audio, audio)
+
+    def test_structured_output_rejects_incomplete_and_refused_responses(self):
+        for response in [{"status": "incomplete", "output": []},
+                         {"status": "completed", "output": [{"type": "message", "content": [{"type": "refusal"}]}]}]:
+            with patch.object(provider, "json_request", return_value=response):
+                self.assertRaises(RuntimeError, provider.structured, "instructions", {}, {}, "test", "model")
+        response = {"status": "completed", "output": [{"type": "reasoning"}, {"type": "message", "content": [{"type": "output_text", "text": "{\"passed\":true}"}]}]}
+        with patch.object(provider, "json_request", return_value=response) as request:
+            self.assertEqual(provider.structured("instructions", {}, {}, "test", "model"), {"passed": True})
+            self.assertFalse(request.call_args.args[1]["store"])
+            self.assertEqual(request.call_args.args[1]["text"]["format"]["type"], "json_schema")
+
     def test_realtime_audio_requires_completed_response_and_redacts_errors(self):
         pcm = b"\x01\x00" * 240
         events = [{"type": "session.created"}, {"type": "session.updated"},

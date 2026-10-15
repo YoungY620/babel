@@ -6,6 +6,7 @@ import os
 import time
 from pathlib import Path
 
+from text_quality import models
 from provider import json_request
 from tts import AUDIO_MODEL, MODEL, PRESETS, render, save
 
@@ -33,7 +34,7 @@ def main():
         save(args.output / "evaluation.json", report)
         print(json.dumps(report), flush=True)
         raise
-    candidates = [MODEL, AUDIO_MODEL, "gpt-transcribe", "gpt-4o-transcribe-diarize", "gpt-6.1-sol", "gpt-6-sol", "gpt-5.5"]
+    candidates = sorted({MODEL, AUDIO_MODEL, *models().values()})
     report["available_models"] = {m: m in available for m in candidates}
     save(args.output / "evaluation.json", report)
     for voice in PRESETS:

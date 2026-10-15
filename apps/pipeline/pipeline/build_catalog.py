@@ -13,7 +13,8 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
-from tts import is_current, file_hash
+from completion import is_current
+from tts import file_hash
 
 REPO = Path(__file__).resolve().parents[3]
 ROOT = REPO / "apps/pipeline"
@@ -62,6 +63,7 @@ def export_catalog(output, episodes, series, assets, audio_base):
         if web.get("transcriptSha256") != file_hash(directory / "transcript_zh.json"):
             print(f"skip stale reviewed metadata: {slug}")
             continue
+        text_review = json.loads((directory / "text-review.json").read_text())
         speech = json.loads((directory / "speech.json").read_text())
         source = json.loads((directory / "transcript_zh.json").read_text())
         show = next(s for s in series if s["id"] == meta["show"])
@@ -99,7 +101,11 @@ def export_catalog(output, episodes, series, assets, audio_base):
                       "durationSeconds": speech["duration_seconds"], "language": "zh-CN", "synthetic": True},
             "quality": {"kind": "verified-podcast", "model": speech["model"],
                         "reviewModel": speech["verification"]["model"],
-                        "reviewedUnits": speech["verification"]["reviewed_units"]},
+                        "reviewedUnits": speech["verification"]["reviewed_units"],
+                        "text": {"asrModel": text_review["models"]["asr"], "writerModel": text_review["models"]["writer"],
+                                 "reviewModel": text_review["models"]["reviewer"], "sourceSha256": text_review["sourceSha256"],
+                                 "rawTranscriptSha256": text_review["rawTranscriptSha256"],
+                                 "transcriptSha256": text_review["transcriptSha256"]}},
             "detail": f"{prefix}/detail.json", "captions": captions})
     catalog = {"schemaVersion": 1, "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                "series": series, "episodes": sorted(published, key=lambda episode: episode["publishedAt"], reverse=True)}

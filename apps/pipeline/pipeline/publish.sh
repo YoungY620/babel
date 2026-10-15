@@ -28,7 +28,7 @@ for asset in json.load(sys.stdin)["assets"]:
 for f in episodes/*/zh.mp3; do
   [ -e "$f" ] || continue
   slug=$(basename "$(dirname "$f")")
-  if ! .venv/bin/python pipeline/tts.py "$slug" --check; then
+  if ! .venv/bin/python pipeline/completion.py "$slug"; then
     prune_assets "$slug" ""
     echo "skip unverified audio: $slug"
     continue

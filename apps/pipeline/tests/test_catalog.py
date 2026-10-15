@@ -39,6 +39,8 @@ class CatalogTests(unittest.TestCase):
                                     "model": "speech-model", "verification": {"model": "review-model", "reviewed_units": 2},
                                     "units": [{"start": 0, "end": 4, "speaker": "Narrator", "text": "第一句。", "source_indices": [0]},
                                               {"start": 4.2, "end": 9, "speaker": "Narrator", "text": "第二句。", "source_indices": [0]}]},
+                    "text-review.json": {"models": {"asr": "asr-model", "writer": "text-model", "reviewer": "review-model"},
+                                         "sourceSha256": "b" * 64, "rawTranscriptSha256": "c" * 64, "transcriptSha256": "d" * 64},
                     "secret.json": {"credential": "must-not-be-published"},
                 }
                 for name, value in files.items():

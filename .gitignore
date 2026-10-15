@@ -21,3 +21,5 @@ apps/pipeline/episodes/*/.speech_parts/
 apps/pipeline/episodes/*/samples/.sample-*/
 
 .env*
+apps/pipeline/episodes/*/.text_parts/
+apps/pipeline/episodes/*/script_override.json

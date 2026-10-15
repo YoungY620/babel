@@ -89,3 +89,21 @@ moon 只负责项目/任务登记与调度（根项目、apps/pipeline、apps/we
 （.transcribe_parts/、.tts_parts/、transcript_zh.json 增量保存），
 中断后重跑从断点继续；convert.yml 加 concurrency 组防止两个周期重入。
 安装验收阶段不自动启动转换。
+
+## D11 文本：音频证据、逐块审核与完整文章
+
+保留 CPU faster-whisper 的原始文字与时间。`transcribe.json` 绑定源音频、模型、切片设置和原稿；
+源音频或模型变化时，清除旧转录缓存与说话人样本。说话人标签不改变原稿指纹。
+`gpt-transcribe` 对完整音频提供独立证据，包含本地时间轴外的开头、结尾和间隔；
+使用最长 300 秒、24 kHz 单声道 PCM WAV，保持每次上传小于 25 MB。
+默认 `gpt-6-astra` 纠错并精译，再用独立请求审核数字、专名、遗漏、语义与标点。
+不确定处保留明确标记。仅通过的块落入续跑缓存；失败不覆盖上次完成稿。
+
+`script_override.json` 是人工精修的明确输入，仍需音频证据审核；生成产物不作为隐式覆盖接口。
+中英文章完整保留审核后的文字稿，只做段落整理。中英标题和摘要另行生成并审核。
+统一完成条件同时检查文本、元数据和语音。源音频、原稿、模型、策略与结果哈希均绑定到审核记录。
+
+依据：[录音转录](https://developers.openai.com/api/docs/guides/speech-to-text)、
+[模型](https://developers.openai.com/api/docs/models)、
+[结构化输出](https://developers.openai.com/api/docs/guides/structured-outputs)。
+这是本项目受测候选配置，不等同于跨供应商的绝对质量排名；真实验收仍需有效云端凭据。
