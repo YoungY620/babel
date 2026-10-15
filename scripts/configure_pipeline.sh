@@ -2,9 +2,10 @@
 # Repository identity and public publishing metadata for a fresh checkout.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-: "${GITHUB_REPOSITORY:?Set GITHUB_REPOSITORY to owner/repo}"
-owner=${GITHUB_REPOSITORY%/*}
-repo=${GITHUB_REPOSITORY#*/}
+repository=${1:-${GITHUB_REPOSITORY:?Set GITHUB_REPOSITORY to owner/repo}}
+[[ "$repository" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
+owner=${repository%/*}
+repo=${repository#*/}
 git config user.name "$owner"
 git config user.email "$owner@users.noreply.github.com"
 if [ ! -f apps/pipeline/config.env ]; then

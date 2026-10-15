@@ -7,8 +7,10 @@ set -euo pipefail
 [ "$ID" = ubuntu ]
 MODE="${1:?Usage: install-runner.sh prepare|register [owner/repo]}"
 [[ "$MODE" = prepare || "$MODE" = register ]]
-REPOSITORY="${2:-YoungY620/babel}"
+REPOSITORY="${2:-YoungY620/babel-runner}"
 [[ "$REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
+# A persistent runner must never accept workflows from a public repository.
+[ "$REPOSITORY" = YoungY620/babel-runner ]
 RUNNER_USER=babel-runner
 RUNNER_HOME=/srv/babel
 VERSION=2.338.0
@@ -55,6 +57,11 @@ if [ "$MODE" = prepare ]; then
   exit 0
 fi
 
+# GitHub deliberately returns 404 to anonymous callers for private repositories.
+# Refuse public repositories and unexpected API failures before registration.
+visibility=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+  "https://api.github.com/repos/$REPOSITORY")
+[ "$visibility" = 404 ]
 cd "$RUNNER_HOME/runner"
 read -r TOKEN
 trap 'unset TOKEN ACTIONS_RUNNER_INPUT_TOKEN' EXIT
