@@ -41,7 +41,7 @@ def read_object(path):
 
 
 def models():
-    return {"asr": os.environ.get("ASR_MODEL", ASR_MODEL),
+    return {"asr": ASR_MODEL,
             "writer": os.environ.get("TEXT_MODEL", TEXT_MODEL),
             "reviewer": os.environ.get("TEXT_REVIEW_MODEL", TEXT_MODEL)}
 

@@ -208,6 +208,10 @@ def main():
 
     # 文字版页面
     art_dir = DOCS / "episodes"
+    approved_articles = {f"{m['slug']}.html" for m in eps if m["article"]}
+    for old in art_dir.glob("*.html"):
+        if old.name not in approved_articles:
+            old.unlink()
     for m in eps:
         if not m["article"]:
             continue

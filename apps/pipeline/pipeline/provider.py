@@ -95,6 +95,8 @@ def speech(text, voice, model, instructions):
 def transcribe_audio(path, model="gpt-transcribe"):
     """Recorded-speech transcription with the current plural languages field."""
     import uuid
+    if model != "gpt-transcribe":
+        raise ValueError("Recorded ASR currently supports only gpt-transcribe")
     if path.stat().st_size > 25_000_000:
         raise ValueError("ASR input exceeds the provider file limit")
     suffix = path.suffix.lower()

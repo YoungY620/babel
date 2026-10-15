@@ -28,6 +28,8 @@ class ProviderTests(unittest.TestCase):
                 self.assertNotIn(b'name="language"', body)
                 self.assertNotIn(b"private-source-name", body)
                 self.assertIn("multipart/form-data; boundary=", mime)
+            with patch.object(provider, "request", side_effect=AssertionError("unsupported model must fail before HTTP")):
+                self.assertRaises(ValueError, provider.transcribe_audio, audio, "whisper-1")
             with patch.object(provider, "request", return_value=b'{"text":""}'):
                 self.assertRaises(RuntimeError, provider.transcribe_audio, audio)
 

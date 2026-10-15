@@ -42,4 +42,4 @@ pnpm moon run pipeline:check pipeline:test
 
 `completion.py <slug>` 是统一发布检查。转换选集、目录导出、RSS 与上传都要求文本、双语元数据和音频同时通过。模型可用性、真实音质和完整产能仍需有效云端凭据实测，离线模拟测试不能替代该验收。
 
-模型配置：`ASR_MODEL`（默认 `gpt-transcribe`）、`TEXT_MODEL` 与 `TEXT_REVIEW_MODEL`（均默认 `gpt-6-astra`）。使用 Responses 严格 JSON schema，不保留旧翻译模型或无审核降级分支。
+云端转录固定使用 `gpt-transcribe`，不支持旧模型接口。文本模型配置：`TEXT_MODEL` 与 `TEXT_REVIEW_MODEL`（均默认 `gpt-6-astra`）。使用 Responses 严格 JSON schema，不保留旧翻译模型或无审核降级分支。

@@ -155,6 +155,9 @@ class SpeechTests(unittest.TestCase):
                     manifest = tts.render(directory, approved, "cedar")
                 else:
                     (directory / "zh.mp3").write_bytes(b"unverified legacy audio")
+            (root / "docs/episodes").mkdir(parents=True)
+            (root / "docs/episodes/stale.html").write_text("unreviewed old article")
+            (root / "docs/episodes/orphan.html").write_text("removed episode")
             fake = root / "bin"
             fake.mkdir()
             log = root / "commands.log"
@@ -171,6 +174,9 @@ class SpeechTests(unittest.TestCase):
             self.assertIn(asset, feed)
             self.assertIn(asset, log.read_text())
             self.assertNotIn("stale", feed)
+            self.assertFalse((root / "docs/episodes/stale.html").exists())
+            self.assertFalse((root / "docs/episodes/orphan.html").exists())
+            self.assertTrue((root / "docs/episodes/approved.html").exists())
             self.assertIn("release delete-asset audio stale-zh-12345678.mp3", log.read_text())
             self.assertIn("release delete-asset audio approved-zh-12345678.mp3", log.read_text())
             uploads = [line for line in log.read_text().splitlines() if line.startswith("release upload")]
