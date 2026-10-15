@@ -22,7 +22,10 @@ PY = sys.executable
 
 def run(script, *args):
     print(f"\n=== {script} {' '.join(str(a) for a in args)} ===", flush=True)
-    subprocess.run([PY, str(ROOT / "pipeline" / script), *[str(a) for a in args]], check=True)
+    env = dict(os.environ)
+    env.setdefault("OMP_NUM_THREADS", "2")   # 限制每个 CPU 重任务的线程数，控制总资源
+    subprocess.run([PY, str(ROOT / "pipeline" / script), *[str(a) for a in args]],
+                   check=True, env=env)
 
 
 def is_done(slug: str) -> bool:
@@ -108,6 +111,9 @@ def main():
     g.add_argument("--url")
     g.add_argument("--slug")
     ap.add_argument("--show", default=None)
+    ap.add_argument("--workers", type=int,
+                    default=int(os.environ.get("CONVERT_WORKERS", "2")),
+                    help="并行处理的集数（每集内部转录再切片并行，注意总资源）")
     args = ap.parse_args()
 
     if args.slug:
@@ -129,13 +135,21 @@ def main():
         print(f"\n本周期共 {len(targets)} 集待处理")
         slugs = [download(show, i) for show, i in targets]
 
-    for slug in slugs:
-        process(slug)
+    if len(slugs) > 1 and args.workers > 1:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        print(f"并行处理 {len(slugs)} 集（workers={args.workers}）")
+        with ThreadPoolExecutor(max_workers=args.workers) as ex:
+            futs = {ex.submit(process, s): s for s in slugs}
+            for f in as_completed(futs):
+                f.result()          # 任一集失败立即抛出，终止本周期
+                print(f"episode done: {futs[f]}", flush=True)
+    else:
+        for slug in slugs:
+            process(slug)
 
     run("build_feed.py")
     print(f"\nDONE {len(slugs)} 集：{', '.join(slugs)}")
     print("发布：bash pipeline/publish.sh")
-
 
 if __name__ == "__main__":
     main()
