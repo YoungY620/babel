@@ -6,7 +6,7 @@
 
 Usage: transcribe.py <slug> [--model large-v3-turbo] [--jobs N]
 """
-import argparse, json, math, os, subprocess
+import argparse, json, math, os, subprocess, tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -62,14 +62,15 @@ def main():
     else:
         from concurrent.futures import ProcessPoolExecutor
         parts_dir = d / ".transcribe_parts"      # 逐片落盘，中断可续跑
-        parts_dir.mkdir(exist_ok=True)
+        if not parts_dir.exists():
+            # Expose the chunk set only after FFmpeg has finished every file.
+            with tempfile.TemporaryDirectory(prefix=".transcribe_split-", dir=d) as td:
+                subprocess.run(["ffmpeg", "-y", "-i", str(src), "-f", "segment",
+                                "-segment_time", str(CHUNK_LEN), "-c", "copy",
+                                str(Path(td) / "part%03d.mp3")],
+                               check=True, capture_output=True)
+                Path(td).rename(parts_dir)
         parts = sorted(parts_dir.glob("part*.mp3"))
-        if not parts:
-            subprocess.run(["ffmpeg", "-y", "-i", str(src), "-f", "segment",
-                            "-segment_time", str(CHUNK_LEN), "-c", "copy",
-                            str(parts_dir / "part%03d.mp3")],
-                           check=True, capture_output=True)
-            parts = sorted(parts_dir.glob("part*.mp3"))
         offsets, t = [], 0.0
         for p in parts:                    # 用各片真实时长算偏移，避免关键帧漂移
             offsets.append(t)

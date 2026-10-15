@@ -61,3 +61,25 @@ class CheckpointTest(unittest.TestCase):
                 self.assertEqual(json.loads((episode / 'transcript_en.json').read_text()),
                                  cached + remaining)
                 self.assertFalse(parts.exists())
+
+    def test_interrupted_split_does_not_expose_partial_chunks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            episode = root / 'episodes/long'
+            episode.mkdir(parents=True)
+            (episode / 'source.mp3').touch()
+            mutagen = SimpleNamespace(File=lambda _: SimpleNamespace(
+                info=SimpleNamespace(length=1800)))
+
+            def interrupted(command, **kwargs):
+                Path(command[-1].replace('%03d', '000')).touch()
+                raise RuntimeError('interrupted split')
+
+            with (patch.object(transcribe, 'ROOT', root),
+                  patch.dict(sys.modules, mutagen=mutagen),
+                  patch.object(sys, 'argv', ['transcribe', 'long', '--jobs', '1']),
+                  patch.object(transcribe.subprocess, 'run', side_effect=interrupted)):
+                with self.assertRaises(RuntimeError):
+                    transcribe.main()
+                self.assertFalse((episode / '.transcribe_parts').exists())
+                self.assertFalse(list(episode.glob('.transcribe_split-*')))
