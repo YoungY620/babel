@@ -91,6 +91,9 @@ def synth_elevenlabs(chunks, d: Path, show_id: str, td: Path):
     parts = []
     for i, (sp, text) in enumerate(chunks):
         p = td / f"part{i:04d}.mp3"
+        if p.exists() and p.stat().st_size > 0:   # 续跑：跳过已完成块
+            parts.append(p)
+            continue
         el_tts(text, voices[sp], p)
         parts.append(p)
         print(f"\relevenlabs {i+1}/{len(chunks)}", end="", flush=True)
@@ -117,6 +120,9 @@ def synth_xtts(chunks, samples_dir: Path, td: Path):
         if not wav_in.exists():
             wav_in = samples_dir / "SPEAKER_00.wav"
         p = td / f"part{i:04d}.wav"
+        if p.exists() and p.stat().st_size > 0:   # 续跑：跳过已完成块
+            parts.append(p)
+            continue
         tts.tts_to_file(text=text, speaker_wav=str(wav_in),
                         language="zh-cn", file_path=str(p))
         parts.append(p)
@@ -141,6 +147,9 @@ def synth_edge_all(chunks, rate, td: Path):
     for i, (sp, text) in enumerate(chunks):
         idx = int(sp.split("_")[-1]) if sp.startswith("SPEAKER_") else 0
         p = td / f"part{i:04d}.mp3"
+        if p.exists() and p.stat().st_size > 0:   # 续跑：跳过已完成块
+            parts.append(p)
+            continue
         asyncio.run(synth_edge(text, EDGE_VOICES[idx % len(EDGE_VOICES)], rate, p))
         parts.append(p)
         print(f"\redge {i+1}/{len(chunks)}", end="", flush=True)
@@ -189,19 +198,21 @@ def main():
             backend = "edge"
     print(f"{len(chunks)} chunks, backend={backend}")
 
-    with tempfile.TemporaryDirectory() as tds:
-        td = Path(tds)
-        if backend == "elevenlabs":
-            parts = synth_elevenlabs(chunks, d, meta.get("show", "other"), td)
-        elif backend == "xtts":
-            parts = synth_xtts(chunks, d / "samples", td)
-        else:
-            parts = synth_edge_all(chunks, args.rate, td)
-        lst = td / "list.txt"
-        lst.write_text("".join(f"file '{p}'\n" for p in parts))
-        subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lst),
-                        "-c:a", "libmp3lame", "-b:a", "64k", "-ac", "1",
-                        str(d / "zh.mp3")], check=True, capture_output=True)
+    parts_dir = d / ".tts_parts" / backend   # 逐块落盘，中断可续跑
+    parts_dir.mkdir(parents=True, exist_ok=True)
+    if backend == "elevenlabs":
+        parts = synth_elevenlabs(chunks, d, meta.get("show", "other"), parts_dir)
+    elif backend == "xtts":
+        parts = synth_xtts(chunks, d / "samples", parts_dir)
+    else:
+        parts = synth_edge_all(chunks, args.rate, parts_dir)
+    lst = parts_dir / "list.txt"
+    lst.write_text("".join(f"file '{p}'\n" for p in parts))
+    subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lst),
+                    "-c:a", "libmp3lame", "-b:a", "64k", "-ac", "1",
+                    str(d / "zh.mp3")], check=True, capture_output=True)
+    import shutil
+    shutil.rmtree(d / ".tts_parts", ignore_errors=True)   # 完成后清理
     print(f"OK -> {d / 'zh.mp3'}")
 
 

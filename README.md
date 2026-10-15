@@ -69,7 +69,7 @@ bash pipeline/publish.sh                        # 发布到 Pages + Releases
 
 1. 仓库 Settings → Actions → Runners 注册本机 self-hosted runner 并常驻运行
 2. 仓库 Secrets 添加 `OPENAI_API_KEY`（必需）、`ELEVENLABS_API_KEY`（可选）
-3. 每周二 12:00（北京）自动跑一批；失败当天 18:00、之后每天 12/18 点重试，
+3. 每周二 12:00（北京）自动跑一批；失败当天 17:00、之后每天 12:00/17:00 重试，
    本周成功后跳过；Actions 页面可手动 dispatch（指定 URL/单集，绕过周门控）
 4. Mac 睡眠时任务不执行，注意电源设置
 

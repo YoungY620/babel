@@ -84,7 +84,10 @@ def process(slug: str):
         run("samples.py", slug)
     else:
         print("skip samples (exists)")
-    if not (d / "transcript_zh.json").exists():
+    zh_p = d / "transcript_zh.json"
+    zh_done = zh_p.exists() and all(
+        s.get("text_zh") for s in json.loads(zh_p.read_text()))
+    if not zh_done:
         if not os.environ.get("OPENAI_API_KEY"):
             sys.exit("需要 OPENAI_API_KEY 才能翻译（或手工提供 transcript_zh.json）")
         run("translate.py", slug)

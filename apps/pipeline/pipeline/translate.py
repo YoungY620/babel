@@ -39,8 +39,18 @@ def main():
     args = ap.parse_args()
     d = ROOT / "episodes" / args.slug
     segs = json.loads((d / "transcript_en.json").read_text())
+    out_p = d / "transcript_zh.json"
 
     zh = [None] * len(segs)
+    if out_p.exists():                      # 续跑：复用已译部分
+        old = json.loads(out_p.read_text())
+        if len(old) == len(segs):
+            zh = [o.get("text_zh") for o in old]
+
+    def save():
+        out_p.write_text(json.dumps([{**s, "text_zh": z} for s, z in zip(segs, zh)],
+                                    ensure_ascii=False, indent=1))
+
     i = 0
     while i < len(segs):
         chunk, j = [], i
@@ -49,6 +59,10 @@ def main():
             chunk.append(segs[j]["text"])
             n += len(segs[j]["text"])
             j += 1
+        if all(zh[i:j]):                    # 该块已译，跳过
+            print(f"\rtranslated {j}/{len(segs)}（续跑跳过）", end="", flush=True)
+            i = j
+            continue
         prompt = ("Translate each English podcast transcript line into natural spoken "
                   "Simplified Chinese, preserving meaning and tone. Keep names/brands in "
                   "original form where common. Return JSON {\"lines\": [...]} with exactly "
@@ -58,6 +72,7 @@ def main():
         assert len(out) == len(chunk), f"alignment mismatch at seg {i}"
         for k, t in enumerate(out):
             zh[i + k] = t
+        save()                              # 每块落盘，中断可续
         print(f"\rtranslated {j}/{len(segs)}", end="", flush=True)
         i = j
     print()

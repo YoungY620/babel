@@ -69,28 +69,39 @@ def main():
         segs = _worker((str(src), 0.0))
     else:
         from concurrent.futures import ProcessPoolExecutor
-        with tempfile.TemporaryDirectory() as td:
+        parts_dir = d / ".transcribe_parts"      # 逐片落盘，中断可续跑
+        parts_dir.mkdir(exist_ok=True)
+        parts = sorted(parts_dir.glob("part*.mp3"))
+        if not parts:
             subprocess.run(["ffmpeg", "-y", "-i", str(src), "-f", "segment",
                             "-segment_time", str(CHUNK_LEN), "-c", "copy",
-                            str(Path(td) / "part%03d.mp3")],
+                            str(parts_dir / "part%03d.mp3")],
                            check=True, capture_output=True)
-            parts = sorted(Path(td).glob("part*.mp3"))
-            offsets, t = [], 0.0
-            for p in parts:                    # 用各片真实时长算偏移，避免关键帧漂移
-                offsets.append(t)
-                t += mutagen.File(str(p)).info.length
-            print(f"{dur/3600:.1f}h -> {len(parts)} parts x {jobs} workers")
+            parts = sorted(parts_dir.glob("part*.mp3"))
+        offsets, t = [], 0.0
+        for p in parts:                    # 用各片真实时长算偏移，避免关键帧漂移
+            offsets.append(t)
+            t += mutagen.File(str(p)).info.length
+        todo = [(str(p), o) for p, o in zip(parts, offsets)
+                if not (parts_dir / (p.stem + ".json")).exists()]
+        print(f"{dur/3600:.1f}h -> {len(parts)} parts x {jobs} workers "
+              f"(续跑，剩 {len(todo)} 片)")
+        if todo:
             with ProcessPoolExecutor(max_workers=jobs, initializer=_init_model,
                                      initargs=(args.model,)) as ex:
-                results = list(ex.map(_worker,
-                                      [(str(p), o) for p, o in zip(parts, offsets)]))
-            segs = [s for part in results for s in part]
+                for (p, _), segs_p in zip(todo, ex.map(_worker, todo)):
+                    (parts_dir / (Path(p).stem + ".json")).write_text(
+                        json.dumps(segs_p, ensure_ascii=False))
+        segs = [s for p in parts
+                for s in json.loads((parts_dir / (p.stem + ".json")).read_text())]
 
     segs.sort(key=lambda s: s["start"])
     (d / "transcript_en.json").write_text(json.dumps(segs, ensure_ascii=False, indent=1))
     srt = "\n".join(f"{i+1}\n{fmt_ts(s['start'])} --> {fmt_ts(s['end'])}\n{s['text']}\n"
                     for i, s in enumerate(segs))
     (d / "transcript_en.srt").write_text(srt)
+    import shutil
+    shutil.rmtree(d / ".transcribe_parts", ignore_errors=True)   # 全部完成后清理临时片
     print(f"OK {len(segs)} segments -> {d}")
 
 
