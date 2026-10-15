@@ -51,8 +51,8 @@ def main():
         report["voices"].append(result)
         save(args.output / "evaluation.json", report)
         print(json.dumps(result, ensure_ascii=False), flush=True)
-    if not any(v["passed"] for v in report["voices"]):
-        raise SystemExit("No preset passed the speech evaluation")
+    if not all(v["passed"] for v in report["voices"]):
+        raise SystemExit("Every enabled preset must pass the speech evaluation")
 
 
 if __name__ == "__main__":

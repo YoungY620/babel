@@ -14,11 +14,11 @@ import re
 import subprocess
 from pathlib import Path
 
-from provider import json_request, request
+from provider import json_request, speech
 
 ROOT = Path(__file__).resolve().parent.parent
 PRESETS = json.loads((ROOT / "voice-presets.json").read_text())
-MODEL = "gpt-4o-mini-tts-2025-12-15"
+MODEL = "gpt-realtime-2.1"
 AUDIO_MODEL = "gpt-audio-1.5"
 RENDER_VERSION = 2
 INSTRUCTIONS = ("用自然、清晰、连贯的普通话朗读，以知性播客访谈的语气表达。"
@@ -168,10 +168,7 @@ def render_part(unit, voice, parts, model, verifier):
             return wav, report
     for attempt in range(2):
         raw = parts / f"{key}.raw.wav"
-        raw.write_bytes(request("audio/speech", {
-            "model": model, "voice": voice, "input": unit["text"],
-            "instructions": INSTRUCTIONS, "response_format": "wav", "speed": 1.0,
-        }))
+        raw.write_bytes(speech(unit["text"], voice, model, INSTRUCTIONS))
         temporary = parts / f"{key}.next.wav"
         ffmpeg("-i", raw, "-af", TRIM, "-ac", "1", "-ar", "24000", "-c:a", "pcm_s16le", temporary)
         temporary.replace(wav)

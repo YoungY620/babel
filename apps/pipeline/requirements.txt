@@ -4,3 +4,4 @@ av>=16,<19
 mutagen
 yt-dlp
 resemblyzer
+websocket-client==1.9.2

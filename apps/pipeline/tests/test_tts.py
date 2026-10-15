@@ -30,6 +30,21 @@ def test_audio():
 
 
 class SpeechTests(unittest.TestCase):
+    def test_evaluation_rejects_any_failed_enabled_voice(self):
+        import evaluate_speech
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.dict(os.environ, {"OPENAI_API_KEY": "example"}), \
+                patch.object(sys, "argv", ["evaluate_speech", "--output", tmp]), \
+                patch.object(evaluate_speech, "json_request", return_value={"data": []}), \
+                patch.object(evaluate_speech, "PRESETS", {"cedar": {}, "marin": {}}), \
+                patch.object(evaluate_speech, "render", side_effect=[
+                    {"duration_seconds": 1, "loudness_lufs": -16, "true_peak_dbtp": -1.5},
+                    RuntimeError("Voice failed quality check")]):
+            with self.assertRaises(SystemExit):
+                evaluate_speech.main()
+            report = json.loads((Path(tmp) / "evaluation.json").read_text())
+            self.assertEqual([v["passed"] for v in report["voices"]], [True, False])
+
     def test_semantic_units_preserve_questions_exclamations_and_turns(self):
         units = tts.speech_units([
             {"speaker": "SPEAKER_00", "text_zh": "真的吗？当然！"},
@@ -45,7 +60,7 @@ class SpeechTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")
     def test_real_audio_cache_invalidation_and_failed_verification(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"TTS_VOICE": ""}), \
-                patch.object(tts, "request", return_value=test_audio()) as synth, \
+                patch.object(tts, "speech", return_value=test_audio()) as synth, \
                 patch.object(tts, "verify_audio", return_value={"passed": True, "issues": []}):
             directory = Path(tmp)
             segments = [{"speaker": "SPEAKER_00", "text_zh": "真的吗？当然！"}]
@@ -97,7 +112,7 @@ class SpeechTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")
     def test_auto_voice_output_survives_disposable_cache_removal(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"TTS_VOICE": ""}), \
-                patch.object(tts, "request", return_value=test_audio()) as synth, \
+                patch.object(tts, "speech", return_value=test_audio()) as synth, \
                 patch.object(tts, "verify_audio", return_value={"passed": True, "issues": []}):
             directory = Path(tmp)
             (directory / "samples").mkdir()
@@ -116,7 +131,7 @@ class SpeechTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")
     def test_publication_excludes_unverified_audio(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"TTS_VOICE": ""}), \
-                patch.object(tts, "request", return_value=test_audio()), \
+                patch.object(tts, "speech", return_value=test_audio()), \
                 patch.object(tts, "verify_audio", return_value={"passed": True, "issues": []}):
             root = Path(tmp)
             source = Path(tts.__file__).parent
@@ -142,7 +157,8 @@ class SpeechTests(unittest.TestCase):
             log = root / "commands.log"
             for command in ["gh", "git"]:
                 script = fake / command
-                script.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$COMMAND_LOG"\n')
+                script.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$COMMAND_LOG"\n' +
+                    ('case "$*" in *"--json assets"*) printf \'%s\\n\' \'{"assets":[{"name":"stale-zh-12345678.mp3"},{"name":"approved-zh-12345678.mp3"}]}\';; esac\n' if command == "gh" else ""))
                 script.chmod(0o755)
             subprocess.run(["bash", str(root / "pipeline/publish.sh")], check=True,
                            env={**os.environ, "PATH": str(fake) + os.pathsep + os.environ["PATH"],
@@ -152,7 +168,13 @@ class SpeechTests(unittest.TestCase):
             self.assertIn(asset, feed)
             self.assertIn(asset, log.read_text())
             self.assertNotIn("stale", feed)
-            self.assertNotIn("stale", log.read_text())
+            self.assertIn("release delete-asset audio stale-zh-12345678.mp3", log.read_text())
+            self.assertIn("release delete-asset audio approved-zh-12345678.mp3", log.read_text())
+            uploads = [line for line in log.read_text().splitlines() if line.startswith("release upload")]
+            self.assertEqual(len(uploads), 1)
+            self.assertNotIn("stale", uploads[0])
+            self.assertIn("AI 合成配音", feed)
+            self.assertIn("AI 合成配音", (root / "docs/index.html").read_text())
 
     def test_retry_repairs_a_partial_speaker_sample_directory(self):
         import convert

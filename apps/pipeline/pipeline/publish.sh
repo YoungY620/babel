@@ -12,10 +12,24 @@ if ! gh release view audio --repo "$GITHUB_USER/$GITHUB_REPO" >/dev/null 2>&1; t
   gh release create audio --repo "$GITHUB_USER/$GITHUB_REPO" \
      --title "Audio assets" --notes "Rolling release hosting zh.mp3 files"
 fi
+# Only remove this episode's known content-hash asset names.
+prune_assets() {
+  gh release view audio --repo "$GITHUB_USER/$GITHUB_REPO" --json assets |
+    .venv/bin/python -c '
+import json,re,sys
+pattern = re.compile(re.escape(sys.argv[1]) + r"-zh-(?:[0-9a-f]{8}|[0-9a-f]{12})\.mp3")
+for asset in json.load(sys.stdin)["assets"]:
+    name = asset["name"]
+    if pattern.fullmatch(name) and name != sys.argv[2]: print(name)
+' "$1" "$2" | while IFS= read -r obsolete; do
+      gh release delete-asset audio "$obsolete" --repo "$GITHUB_USER/$GITHUB_REPO" --yes
+    done
+}
 for f in episodes/*/zh.mp3; do
   [ -e "$f" ] || continue
   slug=$(basename "$(dirname "$f")")
   if ! .venv/bin/python pipeline/tts.py "$slug" --check; then
+    prune_assets "$slug" ""
     echo "skip unverified audio: $slug"
     continue
   fi
@@ -31,7 +45,7 @@ for f in episodes/*/zh.mp3; do
     gh release upload audio "$tmp/$name" --repo "$GITHUB_USER/$GITHUB_REPO"
     rm -rf "$tmp"
   fi
-
+  prune_assets "$slug" "$name"
 done
 
 # 3. pages content

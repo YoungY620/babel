@@ -45,8 +45,9 @@ Ubuntu 26.04 x86_64 服务器上，通过独立用户和 systemd runner 服务�
 Kokoro 中文预设在共享 Ubuntu 上仅作为 CPU 参考样品评估，不作为运行时降级分支。
 
 生产 TTS 使用已配置供应商的受测模型版本；本阶段评估 OpenAI
-`gpt-4o-mini-tts-2025-12-15`，用 `gpt-audio-1.5` 选取预设音色并逐块审核。
-模型依据：[TTS 指南](https://developers.openai.com/api/docs/guides/text-to-speech)、
+`gpt-realtime-2.1`（WebSocket、24 kHz PCM），用 `gpt-audio-1.5` 选取预设音色并逐块审核。
+旧 TTS 快照已列入停用计划，不再使用 `/audio/speech`。
+模型依据：[停用表](https://developers.openai.com/api/docs/deprecations)、[Realtime](https://developers.openai.com/api/docs/guides/realtime-conversations)、[TTS 指南](https://developers.openai.com/api/docs/guides/text-to-speech)、
 [音频模型](https://developers.openai.com/api/docs/models/gpt-audio-1.5)。
 这不是对所有中文 TTS 供应商的绝对质量排名；模型必须通过同一组实际样品才启用。
 
