@@ -12,6 +12,8 @@ Usage: tts.py <slug> [--backend auto|elevenlabs|xtts|edge] [--rate +0%]
 """
 import argparse, asyncio, json, os, subprocess, tempfile, urllib.request, uuid
 from pathlib import Path
+import os as _os
+_os.environ["PATH"] = "/opt/homebrew/bin" + _os.pathsep + _os.environ.get("PATH", "")  # 规避 ~/.local/bin 下不可执行的 x86 ffmpeg
 
 os.environ.setdefault("COQUI_TOS_AGREED", "1")  # XTTS v2 CPML，见 https://coqui.ai/cpml
 

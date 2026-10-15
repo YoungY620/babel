@@ -6,6 +6,15 @@ Usage: transcribe.py <slug> [--model large-v3-turbo]
 import argparse, json
 from pathlib import Path
 
+# 兼容垫片：faster-whisper 1.2.1 给 av.open 传了 av>=15 已删除的
+# metadata_errors 参数，这里剥掉它（语义不变，本就只是抑制元数据告警）
+import av as _av
+_av_open = _av.open
+def _open_strip_metadata_errors(*a, **kw):
+    kw.pop("metadata_errors", None)
+    return _av_open(*a, **kw)
+_av.open = _open_strip_metadata_errors
+
 ROOT = Path(__file__).resolve().parent.parent
 
 

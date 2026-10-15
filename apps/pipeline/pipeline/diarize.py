@@ -9,6 +9,8 @@ Usage: diarize.py <slug> [--speakers N]
 """
 import argparse, json, subprocess, sys, tempfile
 from pathlib import Path
+import os as _os
+_os.environ["PATH"] = "/opt/homebrew/bin" + _os.pathsep + _os.environ.get("PATH", "")  # 规避 ~/.local/bin 下不可执行的 x86 ffmpeg
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
