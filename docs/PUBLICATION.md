@@ -1,0 +1,27 @@
+# Publication snapshot contract
+
+A production snapshot is a complete public data tree. It contains `catalog.json`, each referenced episode's `detail.json` and bilingual VTT files, reviewed cover assets, `feed.xml` and `feed-en.xml`. The catalog/detail schemas remain v1 in `packages/catalog`. No source recordings, generated MP3 files, internal manifests, configuration, caches, executable files or workflow definitions belong in a snapshot.
+
+## Build and validation
+
+`build_publication.py` exports newly verified episodes and can merge an earlier verified snapshot. The earlier snapshot is the durable public-content ledger: its articles, captions and audio URLs survive removal of large local processing files. Freshly completed episodes replace the same ID; other archived episodes remain. Production ledgers reject reference previews. Unknown video/source groups use the bilingual metadata in `site/other-series.json`.
+
+The Node snapshot copier reads only schema-approved catalog/detail/caption paths. It rejects symlinks, including aliases within the input directory. It ignores all other input files. Covers are copied from the reviewed source `site` directory, never from the untrusted data snapshot. Referenced covers must remain available there. It validates the complete copied output, including exact VTT/timeline agreement. This is also the intended boundary for a later Pages data-branch loader; data cannot replace app HTML, JavaScript, workflows or the brand asset.
+
+The builder assembles and validates private staging, renders RSS, then renames the completed directory into a fresh output path. Failure leaves an existing publication untouched. It never uploads assets, pushes Git, updates a persistent ledger pointer or deletes processing files. The publishing transaction must do those steps separately, after remote asset verification and successful site deployment.
+
+## Bilingual RSS
+
+Feed text is stored in `site/feed-dict.json`; episode titles/summaries use their reviewed locale values. English metadata never falls back to Chinese. Both feeds explicitly disclose synthetic narration and contain only verified podcasts. The audio language remains Mandarin in both feeds. Owner email is optional and accepts only the project's public noreply format.
+
+Each episode/audio hash pair has a content-version GUID. Updating the recording therefore changes both the immutable enclosure URL and its GUID. Unchanged catalog content retains `generatedAt`, so repeat builds produce stable catalog and RSS bytes. Dates and ordering use UTC with deterministic ID ordering for ties.
+
+```sh
+pnpm moon run pipeline:publication -- \
+  --output /tmp/babel-new-publication \
+  --previous /srv/babel/publications/verified-snapshot \
+  --site-url https://example.github.io/babel \
+  --audio-base https://github.com/example/babel/releases/download/audio
+```
+
+Omit `--previous` for the first production snapshot. `--author` and an optional public `--email` supply publishing attribution. Feed titles and descriptions are localized in the dictionary. Episode source/model/text/audio provenance is preserved from the verified catalog. The current legacy publisher is not switched by this build-tool change.

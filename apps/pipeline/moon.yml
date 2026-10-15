@@ -36,3 +36,7 @@ tasks:
     command: 'python3.12 pipeline/build_catalog.py'
     options:
       cache: false
+  publication:
+    command: 'python3.12 pipeline/build_publication.py'
+    options:
+      cache: false

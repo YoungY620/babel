@@ -7,6 +7,7 @@ metadata excludes an episode; no source transcript, cache or credential is copie
 import argparse
 import json
 import math
+import re
 import shutil
 import subprocess
 from datetime import datetime, timezone
@@ -42,6 +43,7 @@ def timestamp(seconds):
 
 
 def export_catalog(output, episodes, series, assets, audio_base):
+    series = list(series)
     if output.exists() and any(output.iterdir()):
         raise ValueError("Catalog output directory must be empty")
     output.mkdir(parents=True, exist_ok=True)
@@ -57,7 +59,7 @@ def export_catalog(output, episodes, series, assets, audio_base):
         if not is_current(directory) or not (directory / "web.json").is_file():
             continue
         slug = directory.name
-        if not slug or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789-" for c in slug):
+        if len(slug) > 160 or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug):
             raise ValueError("Invalid episode ID")
         meta = json.loads((directory / "meta.json").read_text())
         web = json.loads((directory / "web.json").read_text())
@@ -67,7 +69,15 @@ def export_catalog(output, episodes, series, assets, audio_base):
         text_review = json.loads((directory / "text-review.json").read_text())
         speech = json.loads((directory / "speech.json").read_text())
         source = json.loads((directory / "transcript_zh.json").read_text())
-        show = next(s for s in series if s["id"] == meta["show"])
+        show = next((s for s in series if s["id"] == meta.get("show")), None)
+        if show is None:
+            show = next((s for s in series if s["id"] == "other"), None)
+            if show is None:
+                show = json.loads((REPO / "site/other-series.json").read_text())
+                series.append(show)
+                target = output / show["cover"]
+                target.parent.mkdir(exist_ok=True)
+                shutil.copyfile(assets / show["cover"], target)
         # A long source segment can span several generated speech units. Merge
         # those ranges so its English words appear once on the new audio clock.
         groups = []

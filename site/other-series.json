@@ -1,0 +1,7 @@
+{
+  "id": "other",
+  "title": {"zh-CN": "其他音频", "en": "Other audio"},
+  "summary": {"zh-CN": "来自其他节目的中文音频。", "en": "Mandarin audio from other sources."},
+  "cover": "covers/babel.svg",
+  "links": []
+}
