@@ -56,7 +56,7 @@ def main():
     jobs = args.jobs if dur > 900 else 1
     jobs = max(1, min(jobs, math.ceil(dur / 600)))  # 每片至少 10 分钟才有意义
 
-    if jobs <= 1:
+    if dur <= 900:
         _init_model(args.model)
         segs = _worker((str(src), 0.0))
     else:

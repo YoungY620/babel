@@ -12,6 +12,10 @@ tasks:
     command: 'python3 -m compileall -q pipeline'
     options:
       cache: false
+  test:
+    command: 'python3 -m unittest discover -s tests'
+    options:
+      cache: false
   convert:
     command: './.venv/bin/python pipeline/convert.py'
     options:

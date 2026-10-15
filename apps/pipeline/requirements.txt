@@ -1,7 +1,7 @@
 numpy<2
 edge-tts
 faster-whisper>=1.2.1
-av<15
+av>=16,<19
 mutagen
 yt-dlp
 resemblyzer
