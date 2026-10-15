@@ -2,9 +2,8 @@
 """一站式转换入口：fetch（如需）→ transcribe → translate → tts → polish 文字版。
 
 模式：
-  convert.py --cycle       # 定时任务用（默认）：按 shows.json 策略选集
-                           #   backlog 模式：该节目最新一集未处理的 ×1
-                           #   recent  模式：该节目 recent_days 窗口内全部未处理新集
+  convert.py --cycle       # 定时任务用（默认）：全部未处理单集（最新优先），
+                           #   联合上限——仅当 总时长>8h 且 集数>5 时才截断
   convert.py --index N --show ID   # 指定节目 + 单集序号
   convert.py --url URL     # 任意视频/音频页面（yt-dlp 抽音轨）
   convert.py --slug SLUG   # 已下载好的单集目录
@@ -12,8 +11,6 @@
 各阶段幂等：已存在的产物会跳过。完成后跑 build_feed.py 即可发布。
 """
 import argparse, json, os, subprocess, sys
-from datetime import datetime, timedelta, timezone
-from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -32,33 +29,42 @@ def is_done(slug: str) -> bool:
     return (ROOT / "episodes" / slug / "zh.mp3").exists()
 
 
+CAP_HOURS, CAP_COUNT = 8, 5
+
+
+def parse_duration(d) -> float:
+    """itunes:duration -> 秒。兼容 秒数 / MM:SS / HH:MM:SS。"""
+    d = str(d or "").strip()
+    if not d:
+        return 0.0
+    try:
+        return float(d)
+    except ValueError:
+        sec = 0.0
+        for p in d.split(":"):
+            sec = sec * 60 + float(p)
+        return sec
+
+
 def cycle_targets():
-    """按 shows.json 策略返回 [(show, index), ...]"""
-    targets = []
-    now = datetime.now(timezone.utc)
+    """本周期批次：全部未处理单集（各节目最新优先），联合上限——
+    仅当 总时长 > 8h 且 集数 > 5 时才拒收（即 ≤5 集时长不限，或 ≤8h 集数不限）。"""
+    batch, total_h = [], 0.0
     for show in load_shows():
         items = load_items(show["rss"])
-        mode = show.get("mode", "backlog")
-        if mode == "recent":
-            cutoff = now - timedelta(days=show.get("recent_days", 8))
-            for i, it in enumerate(items):
-                try:
-                    pub = parsedate_to_datetime(it["pubDate"])
-                except (TypeError, ValueError):
-                    continue
-                if pub >= cutoff and not is_done(slugify(it["title"])):
-                    targets.append((show, i))
-            print(f"[{show['id']}] recent 窗口内未处理: "
-                  f"{sum(1 for s, _ in targets if s['id'] == show['id'])} 集")
-        else:  # backlog：最新一集未处理的
-            for i, it in enumerate(items):
-                if not is_done(slugify(it["title"])):
-                    targets.append((show, i))
-                    print(f"[{show['id']}] backlog 下一集: [{i}] {it['title']}")
-                    break
-            else:
-                print(f"[{show['id']}] 全部处理完毕")
-    return targets
+        added = 0
+        for i, it in enumerate(items):
+            if is_done(slugify(it["title"])):
+                continue
+            cand_h = total_h + parse_duration(it["duration"]) / 3600
+            cand_n = len(batch) + 1
+            if cand_h > CAP_HOURS and cand_n > CAP_COUNT:
+                continue
+            batch.append((show, i))
+            total_h, added = cand_h, added + 1
+        print(f"[{show['id']}] 本周期入选 {added} 集")
+    print(f"批次合计 {len(batch)} 集 ≈ {total_h:.1f} 小时")
+    return batch
 
 
 def process(slug: str):

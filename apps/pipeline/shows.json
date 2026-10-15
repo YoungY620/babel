@@ -4,16 +4,13 @@
       "id": "acquired",
       "name": "Acquired",
       "rss": "https://feeds.transistor.fm/acquired",
-      "mode": "backlog",
-      "comment": "backlog：每周消化最新一集未处理的（库存 200+ 集，逐周推进）"
+      "description": "讲述伟大公司背后的故事与方法论。每期花上百小时调研一家公司，三到四小时讲透它如何从小透明变得无处不在。"
     },
     {
       "id": "dwarkesh",
       "name": "Dwarkesh Podcast",
       "rss": "https://apple.dwarkesh-podcast.workers.dev/feed.rss",
-      "mode": "recent",
-      "recent_days": 8,
-      "comment": "recent：每个周期处理窗口内更新的全部新集"
+      "description": "Dwarkesh Patel 的深度长访谈：AI、地缘政治、历史与思想，嘉宾均为一线研究者与决策者。"
     }
   ]
 }

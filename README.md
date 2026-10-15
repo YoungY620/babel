@@ -54,10 +54,9 @@ bash pipeline/publish.sh                        # 发布
    失败（如 runner 不在线）→ 当天 18:00 重试 → 之后每天 12:00/18:00 重试，
    直到本周成功（`apps/pipeline/state.json` 记录，后续触发自动跳过）。
    也可 Actions 页面手动 dispatch 指定 URL / 单集序号（绕过周门控）
-4. 每周处理哪些集由 `apps/pipeline/shows.json` 决定：
-   - `backlog` 模式（Acquired）：每周消化该节目最新一集未处理的
-   - `recent` 模式（Dwarkesh Podcast）：处理 `recent_days` 窗口内更新的**全部**新集
-   - 新增节目：往 shows.json 加一条即可
+4. 每周期处理范围：全部未上线处理过的单集（各节目最新优先），联合上限——
+   仅当批次 **同时** 超过 8 小时且超过 5 集才截断（即 ≤5 集时长不限、≤8 小时集数不限）。
+   节目源在 `apps/pipeline/shows.json`，新增节目加一条即可
 5. 注意：Mac 睡眠时任务不执行；系统设置里可接电源时防睡眠
 
 ## YouTube cookies（长期）

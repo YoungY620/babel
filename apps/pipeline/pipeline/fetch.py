@@ -33,14 +33,27 @@ def slugify(title: str) -> str:
     return s[:60]
 
 
-def load_items(rss_url: str):
+def load_feed(rss_url: str):
+    """返回 (channel_info, items)。channel_info 含 description/image。"""
     with urllib.request.urlopen(urllib.request.Request(rss_url, headers=UA)) as r:
         ch = ET.parse(r).getroot().find("channel")
+    ch_img = ch.find(f"{ITUNES}image")
+    if ch_img is None:
+        ch_img = ch.find("image/url")
+        ch_image = ch_img.text if ch_img is not None else ""
+    else:
+        ch_image = ch_img.get("href", "")
+    channel = {
+        "title": ch.findtext("title") or "",
+        "description": re.sub(r"<[^>]+>", "", ch.findtext("description") or "").strip(),
+        "image": ch_image,
+    }
     items = []
     for it in ch.findall("item"):
         enc = it.find("enclosure")
         if enc is None:
             continue
+        it_img = it.find(f"{ITUNES}image")
         items.append({
             "title": it.findtext("title") or "",
             "pubDate": it.findtext("pubDate") or "",
@@ -48,16 +61,24 @@ def load_items(rss_url: str):
             "url": enc.get("url"),
             "bytes": int(enc.get("length", 0)),
             "duration": it.findtext(f"{ITUNES}duration") or "",
+            "image": it_img.get("href", "") if it_img is not None else "",
         })
-    return items
+    return channel, items
+
+
+def load_items(rss_url: str):
+    return load_feed(rss_url)[1]
 
 
 def download(show, index: int) -> str:
-    it = load_items(show["rss"])[index]
+    channel, items = load_feed(show["rss"])
+    it = items[index]
     slug = slugify(it["title"])
     d = EPISODES / slug
     d.mkdir(parents=True, exist_ok=True)
-    meta = {**it, "slug": slug, "show": show["id"], "source": show["rss"]}
+    meta = {**it, "slug": slug, "show": show["id"], "source": show["rss"],
+            "show_name": channel["title"], "show_description": channel["description"],
+            "show_image": channel["image"]}
     (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2))
     out = d / "source.mp3"
     if not out.exists():
@@ -86,7 +107,7 @@ def main():
 
     shows = [get_show(args.show)] if args.show else load_shows()
     for s in shows:
-        print(f"\n## {s['name']} ({s['id']}, mode={s.get('mode', 'backlog')})")
+        print(f"\n## {s['name']} ({s['id']})")
         for i, it in enumerate(load_items(s["rss"])[: args.limit]):
             print(f"{i:3d}  {it['bytes']/1e6:7.1f}MB  {it['duration']:>8}  {it['title']}")
 

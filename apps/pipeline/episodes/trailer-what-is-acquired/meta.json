@@ -5,6 +5,11 @@
   "url": "https://pscrb.fm/rss/p/media.transistor.fm/860cafa1/4437e77b.mp3",
   "bytes": 2423358,
   "duration": "152",
+  "image": "",
   "slug": "trailer-what-is-acquired",
-  "source": "https://www.acquired.fm/"
+  "show": "acquired",
+  "source": "https://feeds.transistor.fm/acquired",
+  "show_name": "Acquired",
+  "show_description": "Every company has a story.\n\nLearn the playbooks that built the world’s greatest companies — and how you can apply them.",
+  "show_image": "https://img.transistorcdn.com/SYy-ia3mZbFnUAhbvsUEVW0EZyOaJlbF1tNaO9_3qEw/rs:fill:0:0:1/w:1400/h:1400/q:60/mb:500000/aHR0cHM6Ly9pbWct/dXBsb2FkLXByb2R1/Y3Rpb24udHJhbnNp/c3Rvci5mbS8zNjQx/ZWZhM2YzZTI3YjA5/MDZhYmE3ZWUzNzU2/ZWYzMy5qcGc.jpg"
 }
