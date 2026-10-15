@@ -9,10 +9,13 @@ description: 巴别塔 Babel — 抓取播客单集或访谈视频/音频为 sou
 
 ## 播客 RSS 单集
 
+节目源配置在 `apps/pipeline/shows.json`（当前：Acquired=backlog、
+Dwarkesh Podcast=recent）。新增节目直接往里加一条。
+
 ```bash
 cd apps/pipeline
-.venv/bin/python pipeline/fetch.py --list          # 找序号
-.venv/bin/python pipeline/fetch.py --download <N>  # 下载
+.venv/bin/python pipeline/fetch.py --list [--show dwarkesh]     # 找序号
+.venv/bin/python pipeline/fetch.py --download <N> --show <id>   # 下载
 ```
 
 ## 任意视频/音频页（YouTube、B 站、archive.org…）

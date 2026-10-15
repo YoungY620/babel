@@ -1,18 +1,31 @@
 #!/usr/bin/env python3
-"""List or download episodes from the Acquired RSS feed.
+"""List or download episodes from the show RSS feeds in shows.json.
 
 Usage:
-  fetch.py --list [--limit N]
-  fetch.py --download <index>     # index from --list
+  fetch.py --list [--show ID] [--limit N]
+  fetch.py --download <index> --show ID     # index from --list
 """
-import argparse, json, re, sys, urllib.request
+import argparse, json, re, urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-FEED_URL = "https://feeds.transistor.fm/acquired"
 ROOT = Path(__file__).resolve().parent.parent
 EPISODES = ROOT / "episodes"
 ITUNES = "{http://www.itunes.com/dtds/podcast-1.0.dtd}"
+
+UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"}
+
+
+def load_shows():
+    return json.loads((ROOT / "shows.json").read_text())["shows"]
+
+
+def get_show(show_id):
+    for s in load_shows():
+        if s["id"] == show_id:
+            return s
+    raise SystemExit(f"unknown show: {show_id}（见 shows.json）")
 
 
 def slugify(title: str) -> str:
@@ -20,8 +33,8 @@ def slugify(title: str) -> str:
     return s[:60]
 
 
-def load_items():
-    with urllib.request.urlopen(FEED_URL) as r:
+def load_items(rss_url: str):
+    with urllib.request.urlopen(urllib.request.Request(rss_url, headers=UA)) as r:
         ch = ET.parse(r).getroot().find("channel")
     items = []
     for it in ch.findall("item"):
@@ -39,30 +52,43 @@ def load_items():
     return items
 
 
+def download(show, index: int) -> str:
+    it = load_items(show["rss"])[index]
+    slug = slugify(it["title"])
+    d = EPISODES / slug
+    d.mkdir(parents=True, exist_ok=True)
+    meta = {**it, "slug": slug, "show": show["id"], "source": show["rss"]}
+    (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2))
+    out = d / "source.mp3"
+    if not out.exists():
+        print(f"downloading {it['bytes']/1e6:.1f} MB -> {out}", flush=True)
+        req = urllib.request.Request(it["url"], headers=UA)
+        with urllib.request.urlopen(req) as r, open(out, "wb") as f:
+            while chunk := r.read(1 << 20):
+                f.write(chunk)
+    print(f"OK {d}")
+    return slug
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--show", default=None)
     ap.add_argument("--limit", type=int, default=30)
     ap.add_argument("--download", type=int, default=None)
     args = ap.parse_args()
 
-    items = load_items()
-    if args.list or args.download is None:
-        for i, it in enumerate(items[: args.limit]):
-            print(f"{i:3d}  {it['bytes']/1e6:7.1f}MB  {it['duration']:>8}  {it['title']}")
+    if args.download is not None:
+        if not args.show:
+            raise SystemExit("--download 需要 --show <id>")
+        download(get_show(args.show), args.download)
         return
 
-    it = items[args.download]
-    slug = slugify(it["title"])
-    d = EPISODES / slug
-    d.mkdir(parents=True, exist_ok=True)
-    meta = {**it, "slug": slug, "source": "https://www.acquired.fm/"}
-    (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2))
-    out = d / "source.mp3"
-    if not out.exists():
-        print(f"downloading {it['bytes']/1e6:.1f} MB -> {out}")
-        urllib.request.urlretrieve(it["url"], out)
-    print(f"OK {d}")
+    shows = [get_show(args.show)] if args.show else load_shows()
+    for s in shows:
+        print(f"\n## {s['name']} ({s['id']}, mode={s.get('mode', 'backlog')})")
+        for i, it in enumerate(load_items(s["rss"])[: args.limit]):
+            print(f"{i:3d}  {it['bytes']/1e6:7.1f}MB  {it['duration']:>8}  {it['title']}")
 
 
 if __name__ == "__main__":

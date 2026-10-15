@@ -59,7 +59,7 @@ jobs:
           elif [ -n "${{ inputs.rss_index }}" ]; then
             .venv/bin/python pipeline/convert.py --index "${{ inputs.rss_index }}"
           else
-            .venv/bin/python pipeline/convert.py --next
+            .venv/bin/python pipeline/convert.py --cycle
           fi
 
       - name: mark week done

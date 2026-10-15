@@ -50,11 +50,15 @@ bash pipeline/publish.sh                        # 发布
 1. 仓库 Settings → Actions → Runners → New self-hosted runner → macOS，
    按指引下载 runner 并 `./run.sh`（或 `svc.sh` 装成开机服务）
 2. 仓库 Settings → Secrets → Actions 添加 `OPENAI_API_KEY`
-3. `.github/workflows/convert.yml` 每周二 12:00（北京时间）首次尝试转换一集；
+3. `.github/workflows/convert.yml` 每周二 12:00（北京时间）首次尝试转换；
    失败（如 runner 不在线）→ 当天 18:00 重试 → 之后每天 12:00/18:00 重试，
    直到本周成功（`apps/pipeline/state.json` 记录，后续触发自动跳过）。
    也可 Actions 页面手动 dispatch 指定 URL / 单集序号（绕过周门控）
-4. 注意：Mac 睡眠时任务不执行；系统设置里可接电源时防睡眠
+4. 每周处理哪些集由 `apps/pipeline/shows.json` 决定：
+   - `backlog` 模式（Acquired）：每周消化该节目最新一集未处理的
+   - `recent` 模式（Dwarkesh Podcast）：处理 `recent_days` 窗口内更新的**全部**新集
+   - 新增节目：往 shows.json 加一条即可
+5. 注意：Mac 睡眠时任务不执行；系统设置里可接电源时防睡眠
 
 ## YouTube cookies（长期）
 

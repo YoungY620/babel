@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-"""一站式转换入口：fetch（如需）→ transcribe → translate → tts。
+"""一站式转换入口：fetch（如需）→ transcribe → translate → tts → polish 文字版。
 
 模式：
-  convert.py --next        # 定时任务用：取 RSS 里最新一集尚未处理的
-  convert.py --index N     # 按 RSS 单集序号（fetch.py --list 里的编号）
+  convert.py --cycle       # 定时任务用（默认）：按 shows.json 策略选集
+                           #   backlog 模式：该节目最新一集未处理的 ×1
+                           #   recent  模式：该节目 recent_days 窗口内全部未处理新集
+  convert.py --index N --show ID   # 指定节目 + 单集序号
   convert.py --url URL     # 任意视频/音频页面（yt-dlp 抽音轨）
   convert.py --slug SLUG   # 已下载好的单集目录
 
 各阶段幂等：已存在的产物会跳过。完成后跑 build_feed.py 即可发布。
 """
 import argparse, json, os, subprocess, sys
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
-from fetch import load_items, slugify  # noqa: E402
+from fetch import download, get_show, load_items, load_shows, slugify  # noqa: E402
 
 PY = sys.executable
 
@@ -24,43 +28,41 @@ def run(script, *args):
     subprocess.run([PY, str(ROOT / "pipeline" / script), *[str(a) for a in args]], check=True)
 
 
-def resolve_slug(args) -> str:
-    if args.slug:
-        return args.slug
-    if args.url:
-        out = subprocess.run(
-            [PY, str(ROOT / "pipeline" / "fetch_video.py"), args.url],
-            check=True, capture_output=True, text=True).stdout
-        return Path(out.strip().splitlines()[-1].split()[-1]).name
-    items = load_items()
-    if args.index is not None:
-        run("fetch.py", "--download", args.index)
-        return slugify(items[args.index]["title"])
-    # --next：最新优先，找第一个还没有 zh.mp3 的
-    for i, it in enumerate(items):
-        slug = slugify(it["title"])
-        if not (ROOT / "episodes" / slug / "zh.mp3").exists():
-            print(f"next unprocessed: [{i}] {it['title']} ({it['duration']}s)")
-            run("fetch.py", "--download", i)
-            return slug
-    print("所有单集都已处理完毕")
-    sys.exit(0)
+def is_done(slug: str) -> bool:
+    return (ROOT / "episodes" / slug / "zh.mp3").exists()
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    g = ap.add_mutually_exclusive_group()
-    g.add_argument("--next", action="store_true")
-    g.add_argument("--index", type=int)
-    g.add_argument("--url")
-    g.add_argument("--slug")
-    args = ap.parse_args()
-    if not any([args.next, args.index is not None, args.url, args.slug]):
-        args.next = True
+def cycle_targets():
+    """按 shows.json 策略返回 [(show, index), ...]"""
+    targets = []
+    now = datetime.now(timezone.utc)
+    for show in load_shows():
+        items = load_items(show["rss"])
+        mode = show.get("mode", "backlog")
+        if mode == "recent":
+            cutoff = now - timedelta(days=show.get("recent_days", 8))
+            for i, it in enumerate(items):
+                try:
+                    pub = parsedate_to_datetime(it["pubDate"])
+                except (TypeError, ValueError):
+                    continue
+                if pub >= cutoff and not is_done(slugify(it["title"])):
+                    targets.append((show, i))
+            print(f"[{show['id']}] recent 窗口内未处理: "
+                  f"{sum(1 for s, _ in targets if s['id'] == show['id'])} 集")
+        else:  # backlog：最新一集未处理的
+            for i, it in enumerate(items):
+                if not is_done(slugify(it["title"])):
+                    targets.append((show, i))
+                    print(f"[{show['id']}] backlog 下一集: [{i}] {it['title']}")
+                    break
+            else:
+                print(f"[{show['id']}] 全部处理完毕")
+    return targets
 
-    slug = resolve_slug(args)
+
+def process(slug: str):
     d = ROOT / "episodes" / slug
-
     if not (d / "transcript_en.json").exists():
         run("transcribe.py", slug)
     else:
@@ -83,8 +85,41 @@ def main():
     else:
         print("skip polish (exists)")
 
+
+def main():
+    ap = argparse.ArgumentParser()
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("--cycle", "--next", action="store_true")
+    g.add_argument("--index", type=int)
+    g.add_argument("--url")
+    g.add_argument("--slug")
+    ap.add_argument("--show", default=None)
+    args = ap.parse_args()
+
+    if args.slug:
+        slugs = [args.slug]
+    elif args.url:
+        out = subprocess.run(
+            [PY, str(ROOT / "pipeline" / "fetch_video.py"), args.url],
+            check=True, capture_output=True, text=True).stdout
+        slugs = [Path(out.strip().splitlines()[-1].split()[-1]).name]
+    elif args.index is not None:
+        if not args.show:
+            raise SystemExit("--index 需要 --show <id>")
+        slugs = [download(get_show(args.show), args.index)]
+    else:  # --cycle / 默认
+        targets = cycle_targets()
+        if not targets:
+            print("本周期没有需要处理的单集")
+            sys.exit(0)
+        print(f"\n本周期共 {len(targets)} 集待处理")
+        slugs = [download(show, i) for show, i in targets]
+
+    for slug in slugs:
+        process(slug)
+
     run("build_feed.py")
-    print(f"\nDONE {slug} -> {d / 'zh.mp3'}")
+    print(f"\nDONE {len(slugs)} 集：{', '.join(slugs)}")
     print("发布：bash pipeline/publish.sh")
 
 
