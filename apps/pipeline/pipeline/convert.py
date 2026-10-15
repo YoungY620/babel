@@ -29,7 +29,9 @@ def run(script, *args):
 
 
 def is_done(slug: str) -> bool:
-    return (ROOT / "episodes" / slug / "zh.mp3").exists()
+    from tts import is_current
+    directory = ROOT / "episodes" / slug
+    return is_current(directory) and (directory / "article_zh.md").exists()
 
 
 CAP_HOURS, CAP_COUNT = 8, 5
@@ -97,10 +99,7 @@ def process(slug: str):
         run("translate.py", slug)
     else:
         print("skip translate (exists)")
-    if not (d / "zh.mp3").exists():
-        run("tts.py", slug)
-    else:
-        print("skip tts (exists)")
+    run("tts.py", slug)  # Model/text/voice fingerprints decide whether audio can be reused.
     if not (d / "article_zh.md").exists():
         if os.environ.get("OPENAI_API_KEY"):
             run("polish.py", slug)

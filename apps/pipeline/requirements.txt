@@ -1,11 +1,6 @@
 numpy<2
-edge-tts
 faster-whisper>=1.2.1
 av>=16,<19
 mutagen
 yt-dlp
 resemblyzer
-coqui-tts[codec]
-transformers>=4.57,<5
-setuptools<81
-pypinyin

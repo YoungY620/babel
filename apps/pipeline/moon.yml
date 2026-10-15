@@ -28,3 +28,7 @@ tasks:
     command: 'bash pipeline/publish.sh'
     options:
       cache: false
+  evaluate:
+    command: 'python3.12 pipeline/evaluate_speech.py'
+    options:
+      cache: false

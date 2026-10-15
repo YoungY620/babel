@@ -9,6 +9,6 @@ command -v ffprobe >/dev/null
 "$PYTHON" -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 # CPU wheels avoid downloading CUDA libraries on the CPU-only runner.
-.venv/bin/python -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+.venv/bin/python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m pip check
