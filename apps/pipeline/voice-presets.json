@@ -1,0 +1,22 @@
+{
+  "cedar": {
+    "presentation": "masculine",
+    "style": "warm, composed, medium-low register"
+  },
+  "echo": {
+    "presentation": "masculine",
+    "style": "clear, conversational, medium register"
+  },
+  "marin": {
+    "presentation": "feminine",
+    "style": "warm, composed, medium register"
+  },
+  "coral": {
+    "presentation": "feminine",
+    "style": "bright, conversational, medium register"
+  },
+  "shimmer": {
+    "presentation": "feminine",
+    "style": "light, airy, higher register"
+  }
+}

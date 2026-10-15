@@ -1,12 +1,12 @@
 # 巴别塔 Babel
 
-> 把英文访谈和播客变成中文音频（原嗓音克隆配音）与中文文字版，
+> 把英文访谈和播客变成中文音频（预设音色配音）与中文文字版，
 > 通过播客 RSS 和网页播放器公网分发。
 
 ## 这是什么
 
 一个自动化管线：抓取英文播客/访谈（RSS 或视频音轨）→ AI 转录并区分说话人 →
-翻译成中文 → 用每位说话人自己的嗓音合成中文配音 → 附带润色后的中文文字版 →
+翻译成中文 → 为每位说话人选择风格相近的预设音色，合成中文配音 → 附带润色后的中文文字版 →
 发布到 GitHub Pages + Releases，任何播客客户端订阅 RSS 即可收听。
 
 设计决策记录见 [DECISIONS.md](DECISIONS.md)。
@@ -15,7 +15,7 @@
 
 ```
 apps/
-  pipeline/    转换流水线（核心）：抓取 → 转录 → 说话人分离 → 翻译 → 克隆配音
+  pipeline/    转换流水线（核心）：抓取 → 转录 → 说话人分离 → 翻译 → 预设音色配音
                → 文字版润色 → 发布（Pages RSS/播放器 + Releases 音频）
   web/         （规划中）产品介绍页 + Web 播客客户端
 skills/        babel-fetch / babel-convert / babel-humanize / babel-publish
@@ -40,8 +40,7 @@ cd ../..
 pnpm moon run pipeline:setup
 cd apps/pipeline
 cp config.env.example config.env   # 填 GitHub 账号信息
-export OPENAI_API_KEY=...          # 翻译/润色用
-export ELEVENLABS_API_KEY=...      # 可选：声纹克隆首选后端
+export OPENAI_API_KEY=...          # 翻译、语音合成与音频校验
 
 .venv/bin/python pipeline/convert.py --cycle    # 处理本周期全部批次
 bash pipeline/publish.sh                        # 发布到 Pages + Releases
@@ -79,15 +78,22 @@ bash pipeline/publish.sh                        # 发布到 Pages + Releases
 资源硬上限为 2 个 vCPU、8 GiB 内存，默认单集、单进程、两线程，并降低调度优先级。
 公共代码、CI、Pages 和音频分发仍在本仓库管理。
 
-## 声纹克隆用法
+## 预设音色与质量检查
 
-管线自动完成：分离说话人（SPEAKER_XX）→ 每人剪 ~60s 样本 → 逐段克隆合成。
+每位说话人使用固定的预设音色。通过短语音样本判断可听到的音域、音色和表达风格，
+在候选男声、女声中匹配；不克隆声音，不判断真实身份。也可用 `tts.py <slug> --voice cedar` 明确指定。显式指定会保留；`--voice auto` 重新启用自动音色选择。
+候选音色和风格描述集中在 `apps/pipeline/voice-presets.json`。
 
-- 设 `ELEVENLABS_API_KEY` 即自动用 ElevenLabs（首选）；否则本地 XTTS v2；
-  再不行 edge-tts 多音色兜底。可用 `--backend` 强制指定
-- 样本在 `episodes/<slug>/samples/`，可人工替换更干净的片段
-- ElevenLabs 的 voice_id 缓存于 `voices.json`（gitignore），跨集复用；
-  某集说话人映射不对时检查 `diarization.json` 后手工调整
+- TTS 使用 OpenAI 当前推荐模型的固定快照 `gpt-realtime-2.1`。
+- `gpt-audio-1.5` 逐段检查漏字、重复、数字、专名、多音字、断句和语气；失败重试一次，仍失败则停止，不写完成产物。
+- 保留原文问号、感叹号和句末标点；按语义和说话人分块，只修剪首尾静音，保留句内停顿，并设置明确的块间停顿。
+- 最终音频目标为 -16 LUFS（±1），真峰值不高于 -1 dBTP，128 kbps 单声道 MP3。
+- `speech.json` 记录文本/模型/音色指纹、生成音频时间轴与质量数据。仅有旧 `zh.mp3` 不算完成。
+- `.speech_parts/` 保留已校验块以续跑。修改文本、模型、音色或语音策略后，不复用旧块。
+
+模型审核是自动质量门，不能等同于人工盲听结论。更换模型前，用同一原创测试文本比较音色、错误、停顿、质量结果与完整耗时。
+私有控制仓库部署 `deploy/evaluate-speech.yml` 到评估分支的 `convert.yml`。
+评估只执行已合并到公共 `main` 的受审代码，不接受候选 SHA 输入。它通过 Moon 执行 `pipeline:evaluate`，产物仅存私有 artifact，不发布节目。
 
 ## YouTube 抓取
 
@@ -114,5 +120,4 @@ pre-push hook 与 CI 强制拦截。
 ## 版权提醒
 
 第三方节目内容受版权保护。**私下转录翻译给自己听没问题；公网发布中文配音/
-文字版属于衍生作品，需要取得原作者授权**。克隆真实人物嗓音另涉及
-声音权/肖像权，比文字翻译更敏感。未授权公开发布有被下架/投诉风险，请自行评估。
+文字版属于衍生作品，需要取得原作者授权**。

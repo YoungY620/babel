@@ -38,14 +38,22 @@ Ubuntu 26.04 x86_64 服务器上，通过独立用户和 systemd runner 服务�
 超过 8 小时且超过 5 集（即 ≤5 集时长不限、≤8 小时集数不限）。
 节目源配置驱动（apps/pipeline/shows.json），加节目不改代码。
 
-## D6 声纹克隆后端：ElevenLabs > XTTS > edge-tts
+## D6 配音：预设音色、语义停顿和质量门
 
-目标效果是每位说话人用原嗓音说中文。
-- 首选 **ElevenLabs**（业界最成熟稳健的方案；Instant Voice Clone +
-  eleven_multilingual_v2，英文样本可直接合成中文；按字符计费）。
-- 无 key 时降级 **XTTS v2**（本地免费，质量次之）。
-- 最终兜底 edge-tts（无克隆，仅多音色区分说话人）。
-说话人分离用 resemblyzer 声纹聚类（本地，无需 HF 授权），样本每人 ~60s。
+不再要求克隆原声。参考 second-screening 项目已验证的语义分块、明确停顿、
+说话人音色一致与最终响度检查方式；英文音色配置不能直接视为中文质量结论。
+Kokoro 中文预设在共享 Ubuntu 上仅作为 CPU 参考样品评估，不作为运行时降级分支。
+
+生产 TTS 使用已配置供应商的受测模型版本；本阶段评估 OpenAI
+`gpt-realtime-2.1`（WebSocket、24 kHz PCM），用 `gpt-audio-1.5` 选取预设音色并逐块审核。
+旧 TTS 快照已列入停用计划，不再使用 `/audio/speech`。
+模型依据：[停用表](https://developers.openai.com/api/docs/deprecations)、[Realtime](https://developers.openai.com/api/docs/guides/realtime-conversations)、[TTS 指南](https://developers.openai.com/api/docs/guides/text-to-speech)、
+[音频模型](https://developers.openai.com/api/docs/models/gpt-audio-1.5)。
+这不是对所有中文 TTS 供应商的绝对质量排名；模型必须通过同一组实际样品才启用。
+
+保留标点和句内停顿；只去掉块首尾多余静音，再插入明确停顿。音频审核失败即重试或停止，
+不回退到 XTTS、edge 或其他质量较差的方案。最终校验响度与峰值，输出基于生成音频的时间轴。
+文本、模型、声音和策略均进入指纹；旧缓存不能仅按文件存在性跳过。
 
 ## D7 赞助：只用 Ko-fi
 

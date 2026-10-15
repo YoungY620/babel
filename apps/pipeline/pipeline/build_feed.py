@@ -8,6 +8,7 @@ Usage: build_feed.py
 """
 import json, html, os, urllib.request
 from pathlib import Path
+from tts import is_current
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 
@@ -141,13 +142,13 @@ def main():
     eps = []
     for d in sorted((ROOT / "episodes").iterdir()):
         meta_p, mp3 = d / "meta.json", d / "zh.mp3"
-        if not (meta_p.exists() and mp3.exists()):
+        if not (meta_p.exists() and mp3.exists() and is_current(d)):
             continue
         meta = json.loads(meta_p.read_text())
         meta["zh_bytes"] = mp3.stat().st_size
         # 内容哈希进文件名：重渲染必换 URL，客户端/CDN 不会拿到旧音频
-        import hashlib
-        meta["zh_hash"] = hashlib.md5(mp3.read_bytes()).hexdigest()[:8]
+        speech = json.loads((d / "speech.json").read_text())
+        meta["zh_hash"] = speech["audio_sha256"][:12]
         art = d / "article_zh.md"
         meta["article"] = art.read_text() if art.exists() else None
         eps.append(meta)
@@ -167,7 +168,7 @@ def main():
     items_xml = []
     for m in eps:
         title = escape(f"{m['title']}（中文精译）")
-        desc = escape(m.get("description", "")[:500])
+        desc = escape("本音频由 AI 合成配音，非原说话人录音。 " + m.get("description", "")[:500])
         url = f"{audio_base}/{m['slug']}-zh-{m['zh_hash']}.mp3"
         items_xml.append(f"""  <item>
     <title>{title}</title>
@@ -191,7 +192,7 @@ def main():
   <atom:link href="{feed_url}" rel="self" type="application/rss+xml"/>
   <language>zh-cn</language>
   <lastBuildDate>{build_date}</lastBuildDate>
-  <description>{escape(show_title)} — 英文访谈/播客的中文精译音频与文字版</description>
+  <description>{escape(show_title)} — AI 合成配音的中文音频与文字版</description>
   <itunes:author>{escape(cfg.get('SHOW_AUTHOR', show_title))}</itunes:author>
   <itunes:explicit>false</itunes:explicit>
   <itunes:owner><itunes:email>{escape(cfg.get('SHOW_EMAIL',''))}</itunes:email></itunes:owner>
@@ -252,6 +253,7 @@ def main():
 </section>""")
 
     index_body = f"""<h1>{html.escape(show_title)}</h1>
+<p>本音频由 AI 合成配音，非原说话人录音。</p>
 <p>英文访谈/播客的中文精译：音频 + 文字版。用任意播客客户端（小宇宙 / Apple Podcasts / Overcast…）订阅 RSS：</p>
 <p class="feed">{feed_url}</p>
 {support_html(cfg)}

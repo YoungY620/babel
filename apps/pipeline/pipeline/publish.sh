@@ -7,20 +7,33 @@ cd "$(dirname "$0")/.."
 
 set -a; source config.env; set +a
 
-# 1. create repo on first run
-if ! gh repo view "$GITHUB_USER/$GITHUB_REPO" >/dev/null 2>&1; then
-  gh repo create "$GITHUB_REPO" --public --source . --push || true
-fi
-
 # 2. upload audio to rolling release（文件名带内容哈希，重渲染即新 URL）
 if ! gh release view audio --repo "$GITHUB_USER/$GITHUB_REPO" >/dev/null 2>&1; then
   gh release create audio --repo "$GITHUB_USER/$GITHUB_REPO" \
      --title "Audio assets" --notes "Rolling release hosting zh.mp3 files"
 fi
+# Only remove this episode's known content-hash asset names.
+prune_assets() {
+  gh release view audio --repo "$GITHUB_USER/$GITHUB_REPO" --json assets |
+    .venv/bin/python -c '
+import json,re,sys
+pattern = re.compile(re.escape(sys.argv[1]) + r"-zh-(?:[0-9a-f]{8}|[0-9a-f]{12})\.mp3")
+for asset in json.load(sys.stdin)["assets"]:
+    name = asset["name"]
+    if pattern.fullmatch(name) and name != sys.argv[2]: print(name)
+' "$1" "$2" | while IFS= read -r obsolete; do
+      gh release delete-asset audio "$obsolete" --repo "$GITHUB_USER/$GITHUB_REPO" --yes
+    done
+}
 for f in episodes/*/zh.mp3; do
   [ -e "$f" ] || continue
   slug=$(basename "$(dirname "$f")")
-  hash=$(md5sum "$f" | cut -c1-8)
+  if ! .venv/bin/python pipeline/tts.py "$slug" --check; then
+    prune_assets "$slug" ""
+    echo "skip unverified audio: $slug"
+    continue
+  fi
+  hash=$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1]))["audio_sha256"][:12])' "episodes/$slug/speech.json")
   name="${slug}-zh-${hash}.mp3"
   if gh release view audio --repo "$GITHUB_USER/$GITHUB_REPO" --json assets \
        --jq ".assets[].name" | grep -qx "$name"; then
@@ -32,12 +45,7 @@ for f in episodes/*/zh.mp3; do
     gh release upload audio "$tmp/$name" --repo "$GITHUB_USER/$GITHUB_REPO"
     rm -rf "$tmp"
   fi
-  # 清理该 slug 的旧版本资产（旧哈希/无哈希），防止引用到过期音频
-  for old in $(gh release view audio --repo "$GITHUB_USER/$GITHUB_REPO" --json assets \
-      --jq ".assets[].name" | grep -E "^${slug}-zh(-[0-9a-f]{8})?\.mp3$" | grep -v "^${name}$"); do
-    echo "prune $old"
-    gh release delete-asset audio "$old" --repo "$GITHUB_USER/$GITHUB_REPO" -y
-  done
+  prune_assets "$slug" "$name"
 done
 
 # 3. pages content

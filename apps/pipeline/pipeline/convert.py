@@ -29,7 +29,9 @@ def run(script, *args):
 
 
 def is_done(slug: str) -> bool:
-    return (ROOT / "episodes" / slug / "zh.mp3").exists()
+    from tts import is_current
+    directory = ROOT / "episodes" / slug
+    return is_current(directory) and (directory / "article_zh.md").exists()
 
 
 CAP_HOURS, CAP_COUNT = 8, 5
@@ -84,10 +86,13 @@ def process(slug: str):
         run("diarize.py", slug)
     else:
         print("skip diarize (exists)")
-    if not (d / "samples").is_dir() or not any((d / "samples").glob("*.wav")):
+    from tts import voice_mode
+    speakers = {s.get("speaker", "SPEAKER_00") for s in json.loads((d / "transcript_en.json").read_text())}
+    samples = [d / "samples" / f"{speaker}.wav" for speaker in speakers]
+    if voice_mode(d) == "auto" and not all(p.is_file() and p.stat().st_size > 44 for p in samples):
         run("samples.py", slug)
     else:
-        print("skip samples (exists)")
+        print("skip samples (complete or explicit preset)")
     zh_p = d / "transcript_zh.json"
     zh_done = zh_p.exists() and all(
         s.get("text_zh") for s in json.loads(zh_p.read_text()))
@@ -97,10 +102,7 @@ def process(slug: str):
         run("translate.py", slug)
     else:
         print("skip translate (exists)")
-    if not (d / "zh.mp3").exists():
-        run("tts.py", slug)
-    else:
-        print("skip tts (exists)")
+    run("tts.py", slug)  # Model/text/voice fingerprints decide whether audio can be reused.
     if not (d / "article_zh.md").exists():
         if os.environ.get("OPENAI_API_KEY"):
             run("polish.py", slug)
