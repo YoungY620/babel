@@ -83,8 +83,10 @@ def main():
             with ProcessPoolExecutor(max_workers=jobs, initializer=_init_model,
                                      initargs=(args.model,)) as ex:
                 for (p, _), segs_p in zip(todo, ex.map(_worker, todo)):
-                    (parts_dir / (Path(p).stem + ".json")).write_text(
-                        json.dumps(segs_p, ensure_ascii=False))
+                    checkpoint = parts_dir / (Path(p).stem + ".json")
+                    pending = checkpoint.with_suffix(".json.tmp")
+                    pending.write_text(json.dumps(segs_p, ensure_ascii=False))
+                    pending.replace(checkpoint)
         segs = [s for p in parts
                 for s in json.loads((parts_dir / (p.stem + ".json")).read_text())]
 
