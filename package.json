@@ -1,0 +1,11 @@
+{
+  "name": "babel",
+  "private": true,
+  "description": "巴别塔 Babel — 逆转巴别塔：英文访谈/播客 → 中文音频，RSS 公网分发",
+  "scripts": {
+    "moon": "moon"
+  },
+  "devDependencies": {
+    "@moonrepo/cli": "^1.41.0"
+  }
+}

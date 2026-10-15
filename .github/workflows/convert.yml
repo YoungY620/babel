@@ -1,0 +1,74 @@
+name: convert
+
+# 每周转换一集：周二 12:00（北京时间）首次尝试；
+# 失败（如本机 runner 不在线）→ 当天 18:00 重试 → 之后每天 12:00/18:00 重试，
+# 直到成功（state.json 记录本周已完成，后续触发自动跳过）。
+# cron 为 UTC：04:07 ≈ 北京 12:07，10:07 ≈ 北京 18:07。
+
+on:
+  schedule:
+    - cron: '7 4,10 * * 0,2,3,4,5,6'
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: '视频/音频页 URL（优先，绕过周门控）'
+        required: false
+      rss_index:
+        description: 'RSS 单集序号（绕过周门控）'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: [self-hosted, macOS]
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: privacy check
+        run: bash scripts/privacy_check.sh
+
+      - name: weekly gate
+        id: gate
+        working-directory: apps/pipeline
+        run: |
+          WEEK=$(date -u +%G-W%V)
+          LAST=$(python3 -c "import json;print(json.load(open('state.json')).get('last_week',''))" 2>/dev/null || true)
+          echo "week=$WEEK last=$LAST"
+          if [ "$LAST" = "$WEEK" ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: ensure venv
+        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'
+        working-directory: apps/pipeline
+        run: |
+          if [ ! -x .venv/bin/python ]; then
+            python3 -m venv .venv
+            .venv/bin/pip install edge-tts faster-whisper mutagen yt-dlp
+          fi
+
+      - name: convert
+        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'
+        working-directory: apps/pipeline
+        run: |
+          if [ -n "${{ inputs.video_url }}" ]; then
+            .venv/bin/python pipeline/convert.py --url "${{ inputs.video_url }}"
+          elif [ -n "${{ inputs.rss_index }}" ]; then
+            .venv/bin/python pipeline/convert.py --index "${{ inputs.rss_index }}"
+          else
+            .venv/bin/python pipeline/convert.py --next
+          fi
+
+      - name: mark week done
+        if: github.event_name == 'schedule' && success()
+        working-directory: apps/pipeline
+        run: |
+          python3 -c "import json,os;json.dump({'last_week':os.popen('date -u +%G-W%V').read().strip()},open('state.json','w'))"
+
+      - name: publish
+        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'
+        working-directory: apps/pipeline
+        run: bash pipeline/publish.sh

@@ -1,0 +1,224 @@
+[
+ {
+  "start": 0.14,
+  "end": 6.26,
+  "text": "Hello, and welcome to Acquired, the podcast about great companies and the stories and playbooks behind them.",
+  "text_zh": "你好，欢迎收听 Acquired——一档讲述伟大公司、以及它们背后故事与方法论秘籍的播客。"
+ },
+ {
+  "start": 6.54,
+  "end": 7.28,
+  "text": "I'm Ben Gilbert.",
+  "text_zh": "我是 Ben Gilbert。"
+ },
+ {
+  "start": 7.7,
+  "end": 8.7,
+  "text": "I'm David Rosenthal.",
+  "text_zh": "我是 David Rosenthal。"
+ },
+ {
+  "start": 9.06,
+  "end": 10.26,
+  "text": "And we are your hosts.",
+  "text_zh": "我们是这档节目的主播。"
+ },
+ {
+  "start": 10.7,
+  "end": 18.78,
+  "text": "So, Ben and I are obsessed with uncovering the history, strategy, and stories behind what built the greatest companies in the world.",
+  "text_zh": "我和 Ben 痴迷于挖掘历史、战略和故事——那些成就了世界上最伟大公司的东西。"
+ },
+ {
+  "start": 19.14,
+  "end": 25.64,
+  "text": "Each month, we choose a company, and we spend the entire month researching what uniquely made it work, where many others failed.",
+  "text_zh": "每个月，我们会选一家公司，花整整一个月研究：是什么让它脱颖而出，而其他许多公司却失败了。"
+ },
+ {
+  "start": 25.64,
+  "end": 34.08,
+  "text": "The output of that is a full-day recording session where Ben and I come together and tell the absolute deepest business and technology stories on the internet.",
+  "text_zh": "最终的成果，是一场全天的录制——我和 Ben 坐在一起，讲述互联网上最深度的商业与科技故事。"
+ },
+ {
+  "start": 34.3,
+  "end": 41.0,
+  "text": "And when we say obsessed, we mean that we spend 100 hours each reading everything that exists about a company,",
+  "text_zh": "说到痴迷，我们是认真的：每个人会花一百个小时，读完关于这家公司能找到的一切资料，"
+ },
+ {
+  "start": 41.38,
+  "end": 45.6,
+  "text": "and doing primary research and background interviews with the people who lived it firsthand.",
+  "text_zh": "还会做一手调研，采访那些亲身经历过这段历史的人。"
+ },
+ {
+  "start": 46.1,
+  "end": 52.42,
+  "text": "These are stories like NVIDIA, Costco, Hermes, Microsoft, Rolex, Amazon.",
+  "text_zh": "这些故事的主角包括 NVIDIA、Costco、爱马仕、微软、劳力士、亚马逊。"
+ },
+ {
+  "start": 52.9,
+  "end": 54.58,
+  "text": "Those are some of our favorites, anyway.",
+  "text_zh": "至少这些是我们最喜欢的几期。"
+ },
+ {
+  "start": 54.58,
+  "end": 65.04,
+  "text": "What started 10 years ago as just the study of tech companies has led to a curiosity about our broader world from Berkshire Hathaway to the NFL or even Taylor Swift.",
+  "text_zh": "十年前，我们只是研究科技公司；如今好奇心已经扩展到更广阔的世界——从伯克希尔·哈撒韦，到 NFL，甚至 Taylor Swift。"
+ },
+ {
+  "start": 65.34,
+  "end": 70.64,
+  "text": "Our goal in creating each episode is to uncover the secrets that are lurking in plain sight",
+  "text_zh": "我们制作每一期节目的目标，是揭开那些藏在众目睽睽之下的秘密，"
+ },
+ {
+  "start": 70.64,
+  "end": 74.82,
+  "text": "and how these world-changing companies went from obscurity to ubiquity.",
+  "text_zh": "以及这些改变世界的公司，如何从小透明变得无处不在。"
+ },
+ {
+  "start": 75.18,
+  "end": 79.66,
+  "text": "So if you've ever wondered, how did Starbucks end up on every corner around the globe?",
+  "text_zh": "如果你曾经好奇：星巴克是怎么开遍全球每个角落的？"
+ },
+ {
+  "start": 79.66,
+  "end": 85.7,
+  "text": "Or what does Visa actually do, and how did they become the payment rails of the whole globe?",
+  "text_zh": "Visa 到底是做什么的，又如何成为了整个地球的支付基础设施？"
+ },
+ {
+  "start": 86.18,
+  "end": 89.7,
+  "text": "Or why is the NFL so much bigger than other sports leagues?",
+  "text_zh": "为什么 NFL 比其他体育联盟大那么多？"
+ },
+ {
+  "start": 90.12,
+  "end": 91.38,
+  "text": "Then Acquired is for you.",
+  "text_zh": "那么，Acquired 就是为你准备的。"
+ },
+ {
+  "start": 91.38,
+  "end": 92.18,
+  "text": "Yep.",
+  "text_zh": "没错。"
+ },
+ {
+  "start": 92.4,
+  "end": 95.52,
+  "text": "We have a unique format that we do on the show.",
+  "text_zh": "我们的节目有一种独特的形式，"
+ },
+ {
+  "start": 95.66,
+  "end": 97.8,
+  "text": "We call it a conversational audiobook.",
+  "text_zh": "我们称之为「对话式有声书」。"
+ },
+ {
+  "start": 98.32,
+  "end": 101.68,
+  "text": "Ben and I tell these stories of these companies through a deep conversation.",
+  "text_zh": "我和 Ben 通过一场深度对谈，来讲述这些公司的故事。"
+ },
+ {
+  "start": 102.16,
+  "end": 105.18,
+  "text": "And typically, it's just the two of us without an interview guest.",
+  "text_zh": "通常只有我们两个人，没有访谈嘉宾。"
+ },
+ {
+  "start": 105.92,
+  "end": 110.18,
+  "text": "Occasionally, we will bring in a protagonist from the story, like Howard Schultz from Starbucks,",
+  "text_zh": "偶尔，我们也会请来故事的主角——比如星巴克的 Howard Schultz，"
+ },
+ {
+  "start": 110.4,
+  "end": 113.0,
+  "text": "or Jensen Huang from NVIDIA, or Mark Zuckerberg from Meta.",
+  "text_zh": "NVIDIA 的黄仁勋，或者 Meta 的扎克伯格。"
+ },
+ {
+  "start": 113.42,
+  "end": 117.68,
+  "text": "Usually, though, that's as a follow-up interview to a deep dive that we've already done on their company.",
+  "text_zh": "不过通常，那是在我们已经做完该公司深度节目之后的补充访谈。"
+ },
+ {
+  "start": 117.68,
+  "end": 119.66,
+  "text": "Now, one thing we should say.",
+  "text_zh": "不过有一件事要先告诉你。"
+ },
+ {
+  "start": 120.2,
+  "end": 125.94,
+  "text": "Our episodes are typically very long, like three to four hours long, since we go really deep.",
+  "text_zh": "我们的单集通常非常长，三到四个小时，因为我们挖得真的很深。"
+ },
+ {
+  "start": 126.22,
+  "end": 126.88,
+  "text": "But don't be scared.",
+  "text_zh": "但别被吓到。"
+ },
+ {
+  "start": 127.3,
+  "end": 130.34,
+  "text": "These are amazing stories that deserve every minute.",
+  "text_zh": "这些都是精彩绝伦的故事，每一分钟都值得。"
+ },
+ {
+  "start": 130.78,
+  "end": 133.16,
+  "text": "And we have a lot of fun along the way.",
+  "text_zh": "而且整个过程我们自己也乐在其中。"
+ },
+ {
+  "start": 133.62,
+  "end": 139.24,
+  "text": "Our goal is really to deliver a complete understanding of a company by the time you finish the episode.",
+  "text_zh": "我们的目标是：当你听完一期节目，就能真正完整地理解一家公司。"
+ },
+ {
+  "start": 139.24,
+  "end": 140.82,
+  "text": "So we're glad you're here.",
+  "text_zh": "很高兴你来了。"
+ },
+ {
+  "start": 141.0,
+  "end": 141.26,
+  "text": "Welcome.",
+  "text_zh": "欢迎。"
+ },
+ {
+  "start": 141.58,
+  "end": 149.52,
+  "text": "And if you ever want to discuss any episodes or give us any feedback, join us in the Acquired community at Acquired.fm slash Slack.",
+  "text_zh": "如果你想讨论任何一期节目，或者给我们反馈，欢迎加入 Acquired 社区，访问 Acquired.fm/slack。"
+ },
+ {
+  "start": 149.92,
+  "end": 150.4,
+  "text": "Welcome.",
+  "text_zh": "欢迎。"
+ },
+ {
+  "start": 150.4,
+  "end": 150.58,
+  "text": "Welcome.",
+  "text_zh": "欢迎收听。"
+ }
+]

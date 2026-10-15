@@ -1,0 +1,34 @@
+name: pages
+
+# monorepo 下的 Pages 部署：站点内容在 apps/pipeline/docs，
+# 用 Actions 部署（而非 branch /docs，那只支持仓库根目录）。
+# publish.sh / convert workflow 推送 main 后自动触发。
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/pipeline/docs/**']
+  workflow_dispatch:
+
+permissions:
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/pipeline/docs
+      - id: deployment
+        uses: actions/deploy-pages@v4

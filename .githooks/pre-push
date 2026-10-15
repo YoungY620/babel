@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# 推送前隐私拦截。启用: git config core.hooksPath .githooks
+set -euo pipefail
+cd "$(dirname "$0")/.."
+exec bash scripts/privacy_check.sh

@@ -1,0 +1,6 @@
+.venv/
+episodes/*/source.mp3
+episodes/*/zh.mp3
+__pycache__/
+config.env
+.DS_Store
