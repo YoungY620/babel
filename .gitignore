@@ -17,3 +17,4 @@ apps/pipeline/.venv-old/
 apps/pipeline/episodes/*/.transcribe_parts/
 apps/pipeline/episodes/*/.tts_parts/
 apps/pipeline/episodes/*/.speech_parts/
+.speech-evaluation/

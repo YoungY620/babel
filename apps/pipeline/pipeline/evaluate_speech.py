@@ -19,9 +19,22 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    available = {m["id"] for m in json_request("models")["data"]}
+    key = os.environ["OPENAI_API_KEY"]
+    vendor = next((name for prefix, name in [("sk-or-", "openrouter"), ("sk-proj-", "openai"),
+                  ("sk-svcacct-", "openai"), ("nvapi-", "nvidia"), ("sk-kimi-", "kimi")]
+                  if key.strip().startswith(prefix)), "unknown")
+    report = {"credential_provider_hint": vendor, "credential_has_whitespace": key != key.strip(),
+              "credential_has_bearer_prefix": key.strip().lower().startswith("bearer "), "voices": []}
+    save(args.output / "evaluation.json", report)
+    try:
+        available = {m["id"] for m in json_request("models")["data"]}
+    except RuntimeError as error:
+        report["provider_error"] = str(error)
+        save(args.output / "evaluation.json", report)
+        print(json.dumps(report), flush=True)
+        raise
     candidates = [MODEL, AUDIO_MODEL, "gpt-transcribe", "gpt-4o-transcribe-diarize", "gpt-6.1-sol", "gpt-6-sol", "gpt-5.5"]
-    report = {"available_models": {m: m in available for m in candidates}, "voices": []}
+    report["available_models"] = {m: m in available for m in candidates}
     save(args.output / "evaluation.json", report)
     for voice in PRESETS:
         directory = args.output / voice

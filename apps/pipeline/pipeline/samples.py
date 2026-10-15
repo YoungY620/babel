@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""为每个说话人提取克隆样本：拼接其最长若干段干净语音（默认 60s，16k 单声道 wav）。
+"""为每个说话人提取音色选择参考：拼接干净语音，默认 8s、16k 单声道 WAV。
 
 Usage: samples.py <slug> [--seconds 60]
 产物: episodes/<slug>/samples/SPEAKER_XX.wav
@@ -13,8 +13,10 @@ ROOT = Path(__file__).resolve().parent.parent
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("slug")
-    ap.add_argument("--seconds", type=float, default=60)
+    ap.add_argument("--seconds", type=float, default=8)
     args = ap.parse_args()
+    if args.seconds < 2:
+        ap.error("--seconds must be at least 2")
 
     d = ROOT / "episodes" / args.slug
     segs = json.loads((d / "transcript_en.json").read_text())
@@ -29,15 +31,16 @@ def main():
             by_speaker.setdefault(sp, []).append(s)
 
     for sp, ss in by_speaker.items():
-        # 取最长的若干段，凑够 seconds（样本太短克隆不稳，太长无必要）
+        # 优先用较长的连续语音，参考总长不超过指定时长。
         ss = sorted(ss, key=lambda s: -(s["end"] - s["start"]))
         picked, total = [], 0.0
         for s in ss:
             dur = s["end"] - s["start"]
             if dur < 2.0:
                 continue
-            picked.append(s)
-            total += dur
+            clip = {**s, "end": min(s["end"], s["start"] + args.seconds - total)}
+            picked.append(clip)
+            total += clip["end"] - clip["start"]
             if total >= args.seconds:
                 break
         with tempfile.TemporaryDirectory() as td:
@@ -54,9 +57,6 @@ def main():
             out = out_dir / f"{sp}.wav"
             subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0",
                             "-i", str(lst), str(out)], check=True, capture_output=True)
-        # F5-TTS 等克隆模型需要样本对应的文字
-        (out_dir / f"{sp}.txt").write_text(
-            " ".join(s["text"].strip() for s in picked))
         print(f"OK {sp}: {total:.0f}s from {len(picked)} segments -> {out}")
 
 

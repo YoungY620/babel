@@ -20,8 +20,15 @@ def request(path, payload=None, content_type="application/json"):
             with urllib.request.urlopen(req, timeout=300) as response:
                 return response.read()
         except urllib.error.HTTPError as error:
-            if error.code not in (429, 500, 502, 503, 504) or attempt == 2:
-                raise RuntimeError(f"Model provider returned HTTP {error.code} for {path}") from None
+            try:
+                code = json.loads(error.read()).get("error", {}).get("code")
+            except (ValueError, AttributeError):
+                code = None
+            known = {"invalid_api_key", "insufficient_quota", "model_not_found", "permission_denied",
+                     "rate_limit_exceeded", "unsupported_country_region_territory"}
+            code = code if code in known else "unknown"
+            if error.code not in (429, 500, 502, 503, 504) or code == "insufficient_quota" or attempt == 2:
+                raise RuntimeError(f"Model provider returned HTTP {error.code} ({code}) for {path}") from None
             time.sleep(2 ** attempt)
         except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException):
             if attempt == 2:
