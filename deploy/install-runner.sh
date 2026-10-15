@@ -11,7 +11,7 @@ RUNNER_HOME=/srv/babel
 VERSION=2.338.0
 SHA256=af4b794c1bc41d73d40535e3fe092a39f9679cd8d965954c2aca25a05ca41d32
 read -r TOKEN
-trap 'unset TOKEN' EXIT
+trap 'unset TOKEN ACTIONS_RUNNER_INPUT_TOKEN' EXIT
 
 if ! id "$RUNNER_USER" >/dev/null 2>&1; then
   useradd --system --create-home --home-dir "$RUNNER_HOME" --shell /bin/bash "$RUNNER_USER"
@@ -28,17 +28,18 @@ fi
 apt-get update
 apt-get install -y ca-certificates curl ffmpeg gh git libicu-dev
 archive=$(mktemp)
-trap 'rm -f "$archive"; unset TOKEN' EXIT
+trap 'rm -f "$archive"; unset TOKEN ACTIONS_RUNNER_INPUT_TOKEN' EXIT
 curl --fail --location --retry 3 \
   "https://github.com/actions/runner/releases/download/v$VERSION/actions-runner-linux-x64-$VERSION.tar.gz" \
   -o "$archive"
 printf '%s  %s\n' "$SHA256" "$archive" | sha256sum --check --status
 tar -xzf "$archive"
 chown -R "$RUNNER_USER:$RUNNER_USER" "$RUNNER_HOME"
+export ACTIONS_RUNNER_INPUT_TOKEN="$TOKEN"
 runuser -u "$RUNNER_USER" -- ./config.sh --unattended \
-  --url "https://github.com/$REPOSITORY" --token "$TOKEN" \
+  --url "https://github.com/$REPOSITORY" \
   --name babel-ubuntu --labels babel --work _work
-unset TOKEN
+unset TOKEN ACTIONS_RUNNER_INPUT_TOKEN
 cat > .env <<ENV
 RUNNER_TOOL_CACHE=$RUNNER_HOME/tools
 AGENT_TOOLSDIRECTORY=$RUNNER_HOME/tools
