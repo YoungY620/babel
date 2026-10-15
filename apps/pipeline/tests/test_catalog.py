@@ -12,6 +12,11 @@ import build_catalog
 
 
 class CatalogTests(unittest.TestCase):
+    def test_publication_dates_use_utc_when_timezone_is_unknown(self):
+        for value in ["Fri, 16 Oct 2026 00:00:00 -0000", "Fri, 16 Oct 2026 00:00:00"]:
+            self.assertEqual(build_catalog.publication_date(value), "2026-10-16T00:00:00Z")
+        self.assertEqual(build_catalog.publication_date("Fri, 16 Oct 2026 08:00:00 +0800"), "2026-10-16T00:00:00Z")
+
     def test_export_uses_generated_clock_and_omits_private_or_unverified_data(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -27,7 +32,7 @@ class CatalogTests(unittest.TestCase):
                 directory.mkdir(parents=True)
                 files = {
                     "meta.json": {"show": "babel", "pubDate": "Fri, 16 Oct 2026 00:00:00 GMT",
-                                  "source": "https://example.com/show"},
+                                  "source": "https://example.com/feed?token=private"},
                     "web.json": {"title": label, "summary": label, "article": label},
                     "transcript_zh.json": [{"text": "One source sentence.", "start": 500, "end": 600}],
                     "speech.json": {"audio_sha256": "a" * 64, "audio_bytes": 2000, "duration_seconds": 10,
@@ -38,12 +43,24 @@ class CatalogTests(unittest.TestCase):
                 }
                 for name, value in files.items():
                     (directory / name).write_text(json.dumps(value))
+                web = json.loads((directory / "web.json").read_text())
+                web["transcriptSha256"] = build_catalog.file_hash(directory / "transcript_zh.json")
+                (directory / "web.json").write_text(json.dumps(web))
             with patch.object(build_catalog, "is_current", side_effect=lambda path: path.name == "approved"):
                 output = root / "public"
                 result = build_catalog.export_catalog(output, episodes, series, assets, "https://example.com/audio")
             if shutil.which("pnpm"):
                 subprocess.run(["pnpm", "--filter", "@babel/catalog", "validate", str(output)],
                                cwd=build_catalog.REPO, check=True, stdout=subprocess.DEVNULL)
+            self.assertNotIn("sourceUrl", result["episodes"][0])
+            self.assertNotIn("private", (output / "catalog.json").read_text())
+            with patch.object(build_catalog, "is_current", return_value=True):
+                (episodes / "approved/transcript_zh.json").write_text('[{"text":"edited"}]')
+                web = json.loads((episodes / "legacy/web.json").read_text())
+                web["transcriptSha256"] = "stale-review"
+                (episodes / "legacy/web.json").write_text(json.dumps(web))
+                self.assertEqual(build_catalog.export_catalog(root / "stale", episodes, series, assets,
+                                 "https://example.com/audio")["episodes"], [])
             self.assertEqual([episode["id"] for episode in result["episodes"]], ["approved"])
             detail = json.loads((output / "episodes/approved/detail.json").read_text())
             self.assertEqual(len(detail["cues"]), 1)

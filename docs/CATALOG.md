@@ -11,7 +11,7 @@ All localized fields require `zh-CN` and `en`. UI dictionaries remain separate f
 
 ## Production export
 
-Each completed episode needs `web.json` with bilingual `title`, `summary` and `article` objects. These fields must be reviewed alongside its transcript. Only episodes passing the speech completion and SHA-256 checks are exported. Legacy MP3 files and missing bilingual metadata are excluded.
+Each completed episode needs `web.json` with bilingual `title`, `summary` and `article` objects, plus `transcriptSha256` containing the SHA-256 of the exact reviewed `transcript_zh.json` bytes. A changed transcript invalidates that review. These fields must be reviewed alongside its transcript. Only episodes passing the speech completion and SHA-256 checks are exported. Legacy MP3 files and missing/stale bilingual metadata are excluded. Optional `sourceUrl` must be an explicitly reviewed canonical public URL; raw source/feed URLs are never copied. URLs reject query strings and fragments, except the standard YouTube watch URL with exactly one valid video ID. Publication dates without a known timezone use UTC, consistently on every host.
 
 ```sh
 pnpm moon run pipeline:catalog -- --output /tmp/babel-public --audio-base https://github.com/OWNER/REPO/releases/download/audio

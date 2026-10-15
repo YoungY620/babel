@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
-from tts import is_current
+from tts import is_current, file_hash
 
 REPO = Path(__file__).resolve().parents[3]
 ROOT = REPO / "apps/pipeline"
@@ -22,6 +22,13 @@ ROOT = REPO / "apps/pipeline"
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n")
+
+
+def publication_date(value):
+    date = parsedate_to_datetime(value)
+    if date.tzinfo is None:
+        date = date.replace(tzinfo=timezone.utc)
+    return date.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def timestamp(seconds):
@@ -52,6 +59,9 @@ def export_catalog(output, episodes, series, assets, audio_base):
             raise ValueError("Invalid episode ID")
         meta = json.loads((directory / "meta.json").read_text())
         web = json.loads((directory / "web.json").read_text())
+        if web.get("transcriptSha256") != file_hash(directory / "transcript_zh.json"):
+            print(f"skip stale reviewed metadata: {slug}")
+            continue
         speech = json.loads((directory / "speech.json").read_text())
         source = json.loads((directory / "transcript_zh.json").read_text())
         show = next(s for s in series if s["id"] == meta["show"])
@@ -82,8 +92,8 @@ def export_catalog(output, episodes, series, assets, audio_base):
                       .replace("\n", " ").replace("\r", " ") for cue in cues]
             (output / captions[locale]).write_text("WEBVTT\n\n" + "\n\n".join(blocks) + "\n")
         published.append({"id": slug, "seriesId": show["id"], "title": web["title"], "summary": web["summary"],
-            "publishedAt": parsedate_to_datetime(meta["pubDate"]).astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "sourceUrl": meta["source"], "cover": show["cover"],
+            "publishedAt": publication_date(meta["pubDate"]),
+            **({"sourceUrl": web["sourceUrl"]} if "sourceUrl" in web else {}), "cover": show["cover"],
             "audio": {"url": f"{audio_base}/{slug}-zh-{speech['audio_sha256'][:12]}.mp3",
                       "sha256": speech["audio_sha256"], "bytes": speech["audio_bytes"],
                       "durationSeconds": speech["duration_seconds"], "language": "zh-CN", "synthetic": True},

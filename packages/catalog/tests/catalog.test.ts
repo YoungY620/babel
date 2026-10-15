@@ -31,6 +31,7 @@ test('requires complete bilingual data, provenance, safe URLs and referential in
     { ...catalog, episodes: [{ ...episode, quality: { kind: 'verified-podcast', model: 'x' } }] },
     { ...catalog, episodes: [{ ...episode, detail: 'episodes/other/detail.json' }] },
     { ...catalog, episodes: [{ ...episode, seriesId: 'missing' }] },
+    { ...catalog, episodes: [{ ...episode, sourceUrl: 'https://example.com/feed?token=private' }] },
     { ...catalog, episodes: [episode, episode] },
   ]) assert.equal(catalogSchema.safeParse(invalid).success, false);
   assert.equal(detailSchema.safeParse({ ...detail, cues: [detail.cues[0], detail.cues[0]] }).success, false);

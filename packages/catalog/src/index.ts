@@ -9,8 +9,10 @@ const sha = z.string().regex(/^[a-f0-9]{64}$/);
 const seconds = z.number().finite().nonnegative();
 const https = z.url().refine(value => {
   const url = new URL(value);
-  return url.protocol === 'https:' && !url.username && !url.password;
-}, 'Public HTTPS URL required');
+  const publicVideo = url.hostname === 'www.youtube.com' && url.pathname === '/watch' &&
+    [...url.searchParams.keys()].length === 1 && /^[A-Za-z0-9_-]{11}$/.test(url.searchParams.get('v') ?? '');
+  return url.protocol === 'https:' && !url.username && !url.password && !url.hash && (!url.search || publicVideo);
+}, 'Canonical public HTTPS URL required; query credentials are not allowed');
 const cover = z.string().regex(/^covers\/[a-z0-9-]+\.(?:svg|png|jpg|webp)$/);
 const detailPath = z.string().regex(/^episodes\/[a-z0-9-]+\/detail\.json$/);
 const captionPath = z.string().regex(/^episodes\/[a-z0-9-]+\/(?:zh-CN|en)\.vtt$/);
