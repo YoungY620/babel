@@ -21,8 +21,11 @@ apps/
 skills/        babel-fetch / babel-convert / babel-humanize / babel-publish
 scripts/       setup_pipeline.sh（Ubuntu Python 环境）、cookies_refresh.sh（YouTube cookies）、privacy_check.sh（隐私扫描）
 .github/workflows/
-  convert.yml  每周定时转换（Ubuntu self-hosted runner 执行）
+  convert.yml  执行位置提示（GitHub 托管 runner）
   pages.yml    Pages 部署
+deploy/
+  control-plane.yml  私有执行仓库工作流的受审源文件
+  install-runner.sh Ubuntu 26.04 runner 安装器
 ```
 
 ## 快速开始
@@ -63,13 +66,18 @@ bash pipeline/publish.sh                        # 发布到 Pages + Releases
 每周期批次范围：全部未上线单集（最新优先），仅当批次同时超过 8 小时且
 超过 5 集时截断。
 
-## 定时自动转换
+## 自动转换的执行位置
 
-1. 仓库 Settings → Actions → Runners 注册 Ubuntu self-hosted runner 并常驻运行
-2. 仓库 Secrets 添加 `OPENAI_API_KEY`（必需）、`ELEVENLABS_API_KEY`（可选）
-3. 每周二 12:00（北京）自动跑一批；失败当天 17:00、之后每天 12:00/17:00 重试，
-   本周成功后跳过；Actions 页面可手动 dispatch（指定 URL/单集，绕过周门控）
-4. runner 通过 systemd 常驻；计算默认单集、单进程、两线程，给同机 Research Agent 留出资源
+常驻 runner **只注册到私有仓库 `YoungY620/babel-runner`**，不得注册到本公开仓库。
+公开 PR 能修改工作流的 `runs-on`，runner 标签不能隔离不受信任代码。
+
+1. 按 [部署指南](deploy/README.md) 在 Ubuntu 26.04 x86_64 上准备独立账号和 systemd 服务。
+2. 确认控制仓库仍为 private，再取得临时 token 并注册 runner。
+3. 将受审的 `deploy/control-plane.yml` 部署到私有仓库，配置其模型和发布凭据。
+4. 先手动执行 `smoke=true` 验证真实运行。安装阶段仅手动触发，日调度在质量和容量验收后启用。
+
+资源硬上限为 2 个 vCPU、8 GiB 内存，默认单集、单进程、两线程，并降低调度优先级。
+公共代码、CI、Pages 和音频分发仍在本仓库管理。
 
 ## 声纹克隆用法
 
