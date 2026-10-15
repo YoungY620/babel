@@ -4,6 +4,7 @@ import math
 import os
 import shutil
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -56,7 +57,14 @@ class SpeechTests(unittest.TestCase):
             self.assertEqual(first["voice_mode"], "cedar")
             shutil.rmtree(directory / ".speech_parts")
             audio = directory / "zh.mp3"
+            original = audio.read_bytes()
             stat = audio.stat()
+            audio.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+            os.utime(audio, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+            self.assertFalse(tts.is_current(directory))
+            audio.write_bytes(original)
+            os.utime(audio, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+            self.assertTrue(tts.is_current(directory))
             os.utime(audio, ns=(stat.st_atime_ns, stat.st_mtime_ns + 2_000_000_000))
             self.assertFalse(tts.is_current(directory))
             with patch.object(tts, "select_voices", side_effect=AssertionError("completed output must not reselect voices")):
@@ -104,6 +112,47 @@ class SpeechTests(unittest.TestCase):
             self.assertEqual(first["fingerprint"], second["fingerprint"])
             self.assertEqual(synth.call_count, 1)
             self.assertTrue(tts.is_current(directory))
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")
+    def test_publication_excludes_unverified_audio(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {"TTS_VOICE": ""}), \
+                patch.object(tts, "request", return_value=test_audio()), \
+                patch.object(tts, "verify_audio", return_value={"passed": True, "issues": []}):
+            root = Path(tmp)
+            source = Path(tts.__file__).parent
+            shutil.copytree(source, root / "pipeline")
+            shutil.copy(source.parent / "voice-presets.json", root)
+            (root / "shows.json").write_text('{"shows": []}')
+            (root / "config.env").write_text('GITHUB_USER=example\nGITHUB_REPO=babel\nSHOW_TITLE=Babel\n')
+            (root / ".venv/bin").mkdir(parents=True)
+            (root / ".venv/bin/python").symlink_to(sys.executable)
+            segments = [{"speaker": "SPEAKER_00", "text_zh": "通过验证，才能发布。"}]
+            for slug in ["approved", "stale"]:
+                directory = root / "episodes" / slug
+                directory.mkdir(parents=True)
+                (directory / "transcript_zh.json").write_text(json.dumps(segments))
+                (directory / "meta.json").write_text(json.dumps({
+                    "slug": slug, "title": slug, "pubDate": "Fri, 16 Oct 2026 00:00:00 GMT"}))
+                if slug == "approved":
+                    manifest = tts.render(directory, segments, "cedar")
+                else:
+                    (directory / "zh.mp3").write_bytes(b"unverified legacy audio")
+            fake = root / "bin"
+            fake.mkdir()
+            log = root / "commands.log"
+            for command in ["gh", "git"]:
+                script = fake / command
+                script.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$COMMAND_LOG"\n')
+                script.chmod(0o755)
+            subprocess.run(["bash", str(root / "pipeline/publish.sh")], check=True,
+                           env={**os.environ, "PATH": str(fake) + os.pathsep + os.environ["PATH"],
+                                "COMMAND_LOG": str(log)}, stdout=subprocess.DEVNULL)
+            feed = (root / "docs/feed.xml").read_text()
+            asset = "approved-zh-" + manifest["audio_sha256"][:12] + ".mp3"
+            self.assertIn(asset, feed)
+            self.assertIn(asset, log.read_text())
+            self.assertNotIn("stale", feed)
+            self.assertNotIn("stale", log.read_text())
 
     def test_retry_repairs_a_partial_speaker_sample_directory(self):
         import convert

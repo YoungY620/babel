@@ -92,8 +92,8 @@ bash pipeline/publish.sh                        # 发布到 Pages + Releases
 - `.speech_parts/` 保留已校验块以续跑。修改文本、模型、音色或语音策略后，不复用旧块。
 
 模型审核是自动质量门，不能等同于人工盲听结论。更换模型前，用同一原创测试文本比较音色、错误、停顿、质量结果与完整耗时。
-私有控制仓库可临时部署 `deploy/evaluate-speech.yml` 到测试分支的 `convert.yml`，
-手动传入公共代码的完整提交 SHA。它通过 Moon 执行 `pipeline:evaluate`，产物仅存私有 artifact，不发布节目。
+私有控制仓库部署 `deploy/evaluate-speech.yml` 到评估分支的 `convert.yml`。
+评估只执行已合并到公共 `main` 的受审代码，不接受候选 SHA 输入。它通过 Moon 执行 `pipeline:evaluate`，产物仅存私有 artifact，不发布节目。
 
 ## YouTube 抓取
 

@@ -8,6 +8,7 @@ Usage: build_feed.py
 """
 import json, html, os, urllib.request
 from pathlib import Path
+from tts import is_current
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 
@@ -141,13 +142,13 @@ def main():
     eps = []
     for d in sorted((ROOT / "episodes").iterdir()):
         meta_p, mp3 = d / "meta.json", d / "zh.mp3"
-        if not (meta_p.exists() and mp3.exists()):
+        if not (meta_p.exists() and mp3.exists() and is_current(d)):
             continue
         meta = json.loads(meta_p.read_text())
         meta["zh_bytes"] = mp3.stat().st_size
         # 内容哈希进文件名：重渲染必换 URL，客户端/CDN 不会拿到旧音频
-        import hashlib
-        meta["zh_hash"] = hashlib.md5(mp3.read_bytes()).hexdigest()[:8]
+        speech = json.loads((d / "speech.json").read_text())
+        meta["zh_hash"] = speech["audio_sha256"][:12]
         art = d / "article_zh.md"
         meta["article"] = art.read_text() if art.exists() else None
         eps.append(meta)

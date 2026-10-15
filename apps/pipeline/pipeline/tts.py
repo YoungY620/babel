@@ -236,7 +236,8 @@ def is_current(directory):
         segments = json.loads((directory / "transcript_zh.json").read_text())
         audio = (directory / "zh.mp3").stat()
         return (matching_plan(directory, segments, manifest, voice_mode(directory, manifest=manifest))
-                and manifest["audio_bytes"] == audio.st_size and manifest["audio_mtime_ns"] == audio.st_mtime_ns)
+                and manifest["audio_bytes"] == audio.st_size and manifest["audio_mtime_ns"] == audio.st_mtime_ns
+                and manifest["audio_sha256"] == file_hash(directory / "zh.mp3"))
     except (OSError, KeyError, ValueError, TypeError):
         return False
 
@@ -303,12 +304,15 @@ def render(directory, segments, voice=None):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("slug")
+    ap.add_argument("--check", action="store_true", help="Verify completion without model calls")
     ap.add_argument("--voice", choices=[*PRESETS, "auto"], default=os.environ.get("TTS_VOICE"),
                     help="Preset override; auto clears a saved override. Unset retains the saved mode.")
     args = ap.parse_args()
     directory = (ROOT / "episodes" / args.slug).resolve()
     if not directory.is_relative_to((ROOT / "episodes").resolve()):
         raise ValueError("Invalid episode path")
+    if args.check:
+        raise SystemExit(0 if is_current(directory) else 1)
     segments = json.loads((directory / "transcript_zh.json").read_text())
     result = render(directory, segments, args.voice)
     print(f"OK: {result['duration_seconds']:.1f}s verified Mandarin speech")
