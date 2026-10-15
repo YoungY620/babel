@@ -100,7 +100,11 @@ class TextQualityTests(unittest.TestCase):
             self.assertFalse(text_quality.valid_lines([{"id": 0, "text": "a", "text_zh": "甲"}] * 2, group))
             web = directory / "web.json"
             (directory / "meta.json").write_text('{"title":"Test"}')
-            with patch.object(polish, "structured", side_effect=result): polish.prepare(directory)
+            def complete_context(instructions, content, schema, name, model):
+                self.assertEqual(len(content["script"]), len(segments))
+                self.assertEqual([row["text"] for row in content["script"]], [row["text"] for row in segments])
+                return result(instructions, content, schema, name, model)
+            with patch.object(polish, "structured", side_effect=complete_context): polish.prepare(directory)
             self.assertTrue(polish.is_current(directory))
             web.write_text(web.read_text().replace("测试节目", "过期标题"))
             self.assertFalse(polish.is_current(directory))
