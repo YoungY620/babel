@@ -145,6 +145,9 @@ def main():
             continue
         meta = json.loads(meta_p.read_text())
         meta["zh_bytes"] = mp3.stat().st_size
+        # 内容哈希进文件名：重渲染必换 URL，客户端/CDN 不会拿到旧音频
+        import hashlib
+        meta["zh_hash"] = hashlib.md5(mp3.read_bytes()).hexdigest()[:8]
         art = d / "article_zh.md"
         meta["article"] = art.read_text() if art.exists() else None
         eps.append(meta)
@@ -165,7 +168,7 @@ def main():
     for m in eps:
         title = escape(f"{m['title']}（中文精译）")
         desc = escape(m.get("description", "")[:500])
-        url = f"{audio_base}/{m['slug']}-zh.mp3"
+        url = f"{audio_base}/{m['slug']}-zh-{m['zh_hash']}.mp3"
         items_xml.append(f"""  <item>
     <title>{title}</title>
     <description>{desc}</description>
@@ -176,6 +179,9 @@ def main():
     <itunes:summary>{desc}</itunes:summary>
   </item>""")
 
+    from email.utils import format_datetime
+    from datetime import datetime, timezone
+    build_date = format_datetime(datetime.now(timezone.utc))
     feed = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
      xmlns:atom="http://www.w3.org/2005/Atom">
@@ -184,6 +190,7 @@ def main():
   <link>{pages_base}</link>
   <atom:link href="{feed_url}" rel="self" type="application/rss+xml"/>
   <language>zh-cn</language>
+  <lastBuildDate>{build_date}</lastBuildDate>
   <description>{escape(show_title)} — 英文访谈/播客的中文精译音频与文字版</description>
   <itunes:author>{escape(cfg.get('SHOW_AUTHOR', show_title))}</itunes:author>
   <itunes:explicit>false</itunes:explicit>
@@ -225,7 +232,7 @@ def main():
         desc = show_desc.get(sid) or (ms[0].get("show_description") or "")[:300]
         rows = []
         for m in ms:
-            url = f"{audio_base}/{m['slug']}-zh.mp3"
+            url = f"{audio_base}/{m['slug']}-zh-{m['zh_hash']}.mp3"
             art = (f' · <a href="episodes/{m["slug"]}.html">文字版</a>' if m["article"] else "")
             thumb = (f'<img class="thumb" src="{m["cover"]}" alt="" loading="lazy">'
                      if m.get("cover") else '<div class="thumb"></div>')
@@ -234,7 +241,7 @@ def main():
   <div class="body">
     <h3>{html.escape(m['title'])}</h3>
     <p class="date">{html.escape(m['pubDate'])} · 原片 {m.get('duration','')}{art}</p>
-    <audio controls preload="none" src="{url}"></audio>
+    <audio controls preload="metadata" src="{url}"></audio>
   </div>
 </div>""")
         style = "" if idx == 0 else ' style="display:none"'
@@ -250,6 +257,7 @@ def main():
 {support_html(cfg)}
 <div class="tabs">{''.join(tabs)}</div>
 {''.join(sections)}
+<p class="date" style="margin-top:24px">内容构建于 {build_date} · 共 {len(eps)} 集 · 每次转换周期结束后自动更新</p>
 <script>
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {{
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === b));
