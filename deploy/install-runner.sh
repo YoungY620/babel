@@ -18,7 +18,7 @@ SHA256=af4b794c1bc41d73d40535e3fe092a39f9679cd8d965954c2aca25a05ca41d32
 
 if ! id "$RUNNER_USER" >/dev/null 2>&1; then
   [ "$MODE" = prepare ]
-  useradd --system --create-home --home-dir "$RUNNER_HOME" --shell /bin/bash "$RUNNER_USER"
+  useradd --system --user-group --create-home --home-dir "$RUNNER_HOME" --shell /bin/bash "$RUNNER_USER"
 fi
 # Reject inherited host privileges instead of silently modifying an existing account.
 [ "$(id -u "$RUNNER_USER")" != 0 ]
