@@ -1,22 +1,22 @@
-# 巴别塔 Babel — Web（占位）
+# Babel Web
 
-两部分，可能同站也可能分开部署：
+Vite + React 19 client. GitHub Pages serves the build; no Node daemon is required.
 
-## 1. 产品介绍页（landing）
+```sh
+pnpm install --frozen-lockfile
+pnpm moon run web:dev
+pnpm moon run web:check web:test web:build
+pnpm --filter @babel/catalog validate apps/web/public
+```
 
-- 是什么：英文访谈/播客 → 中文音频，RSS 自由订阅
-- 单集列表、试听、订阅引导（小宇宙 / Apple / Spotify / 泛用客户端）
-- 现阶段由 `apps/pipeline/docs/index.html`（GitHub Pages 静态页）临时承担，
-  本产品页上线后取而代之
+Open `http://127.0.0.1:5173/babel/`. Build output is `apps/web/dist`.
 
-## 2. Web 客户端
+- UI messages are keys in components, mapped in `src/i18n/dict/zh-CN.json` and `en.json` through i18next. Language, document title, accessibility labels, dates, durations and dialogs switch together. Language and playback preferences persist locally; blocked storage does not prevent use.
+- Series, covers, metadata and search use the shared catalog contract. Details load only when requested. Markdown is rendered without raw HTML execution.
+- Audio uses native media events for actual playback state. Progress is keyed by episode ID and audio SHA, saved on pause/close and every five seconds. Metadata must load before saved progress can be replaced. Speed, seek and transcript jumps share the same media element.
+- Native dialogs support keyboard focus, Escape and focus restoration. The sticky player reserves its measured height, including on mobile.
+- All audio is explicitly marked synthetic. The included 19.6-second original CPU preview has reference-ASR provenance; it is not a complete podcast or a final cloud quality result. Unverified legacy audio is not included.
+- `public/feed.xml` and `feed-en.xml` are initially empty feeds with localized metadata. Only fully verified podcasts belong in the subscription feed; previews remain separate.
+- Optional public `VITE_SUPPORT_URL=https://ko-fi.com/<name>` adds the Ko-fi support link. Do not put credentials in any `VITE_*` value.
 
-- 订阅 `feed.xml`（也可支持任意 RSS 源）
-- 在线播放 + 进度记忆
-- 中英对照字幕（数据源：`apps/pipeline/episodes/*/transcript_{en,zh}.srt`）
-
-## 与 pipeline 的关系
-
-- 数据入口 = pipeline 输出的 `docs/feed.xml`（GitHub Pages）与 Releases 音频
-- 若做动态站，考虑把 build_feed.py 的产物改为构建期数据（SSG），moon 里
-  用 `dependsOn: ['pipeline']` 表达这层依赖
+The current Pages workflow is replaced in a separate deployment PR. See `docs/CATALOG.md` for the pipeline export contract. Production media remains on GitHub Releases, outside the Git tree.

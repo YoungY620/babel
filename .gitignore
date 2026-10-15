@@ -19,3 +19,5 @@ apps/pipeline/episodes/*/.tts_parts/
 apps/pipeline/episodes/*/.speech_parts/
 .speech-evaluation/
 apps/pipeline/episodes/*/samples/.sample-*/
+
+.env*

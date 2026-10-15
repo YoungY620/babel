@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-16T00:00:00Z",
+  "series": [
+    {
+      "id": "babel-originals",
+      "title": {
+        "zh-CN": "巴别塔原创",
+        "en": "Babel Originals"
+      },
+      "summary": {
+        "zh-CN": "原创短篇与播放器试听。",
+        "en": "Player previews."
+      },
+      "cover": "covers/babel.svg",
+      "links": []
+    },
+    {
+      "id": "acquired",
+      "title": {
+        "zh-CN": "Acquired",
+        "en": "Acquired"
+      },
+      "summary": {
+        "zh-CN": "讲述公司的历史、关键选择和经营方法。",
+        "en": "Company histories, pivotal decisions and business playbooks."
+      },
+      "cover": "covers/acquired.jpg",
+      "links": [
+        {
+          "label": {
+            "zh-CN": "节目官网",
+            "en": "Original show"
+          },
+          "url": "https://www.acquired.fm/"
+        }
+      ]
+    },
+    {
+      "id": "dwarkesh",
+      "title": {
+        "zh-CN": "Dwarkesh 访谈",
+        "en": "Dwarkesh Podcast"
+      },
+      "summary": {
+        "zh-CN": "关于人工智能、历史和社会的深度访谈。",
+        "en": "Long conversations about AI, history and society."
+      },
+      "cover": "covers/babel.svg",
+      "links": [
+        {
+          "label": {
+            "zh-CN": "节目官网",
+            "en": "Original show"
+          },
+          "url": "https://www.dwarkeshpatel.com/"
+        }
+      ]
+    }
+  ],
+  "episodes": [
+    {
+      "id": "babel-preview",
+      "seriesId": "babel-originals",
+      "title": {
+        "zh-CN": "从一个故事开始",
+        "en": "Start with one story"
+      },
+      "summary": {
+        "zh-CN": "关于公司成长与关键选择的一段原创短篇。",
+        "en": "Company growth and decisions."
+      },
+      "publishedAt": "2026-10-16T00:00:00Z",
+      "cover": "covers/babel.svg",
+      "audio": {
+        "url": "https://github.com/YoungY620/babel/releases/download/voice-preview/babel-preview-zh-fe30a6549e6b.mp3",
+        "sha256": "fe30a6549e6be161834727eddd5c83fb38ddda78db831cb4ef91aa3dc6e760f9",
+        "bytes": 314924,
+        "durationSeconds": 19.6,
+        "language": "zh-CN",
+        "synthetic": true
+      },
+      "quality": {
+        "kind": "reference-preview",
+        "model": "hexgrad/Kokoro-82M",
+        "voice": "zm_yunjian",
+        "method": "reference-asr",
+        "characterErrorRate": 0.014084507042253521
+      },
+      "detail": "episodes/babel-preview/detail.json",
+      "captions": {
+        "zh-CN": "episodes/babel-preview/zh-CN.vtt",
+        "en": "episodes/babel-preview/en.vtt"
+      }
+    }
+  ]
+}

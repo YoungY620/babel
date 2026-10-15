@@ -1,18 +1,17 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
-
 project:
   name: 'web'
-  description: '巴别塔产品网站：Web 介绍页（landing）+ Web 播客客户端'
-
-tags: ['web', 'planned']
-
-# 待选定框架后启用（候选：Next.js / Vite + React）
-# tasks:
-#   dev:
-#     command: 'pnpm dev'
-#     options:
-#       persistent: true
-#   build:
-#     command: 'pnpm build'
-#     inputs: ['src/**/*']
-#     outputs: ['dist']
+  description: 'Bilingual React podcast library and player'
+tags: ['react']
+tasks:
+  dev:
+    command: 'pnpm dev'
+    options:
+      persistent: true
+  check:
+    command: 'pnpm check'
+  test:
+    command: 'pnpm test'
+  build:
+    command: 'pnpm build'
+    outputs: ['dist']
