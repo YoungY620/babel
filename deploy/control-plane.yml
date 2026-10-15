@@ -1,15 +1,8 @@
 name: convert
 
-# 每周转换：周二 12:00（北京时间）首次尝试；
-# 失败（如本机 runner 不在线）→ 当天 17:00 重试 → 之后每天 12:00/17:00 重试，
-# 直到成功（state.json 记录本周已完成，后续触发自动跳过）。
-# 每周期处理全部未上线单集（最新优先），联合上限：仅当同时 >8h 且 >5 集才截断。
-# 断点续跑：转录/TTS/翻译逐块落盘，中断后重跑从断点继续（见 DECISIONS.md D4）。
-# cron 为 UTC：04:07 ≈ 北京 12:07，09:07 ≈ 北京 17:07。
+# Bootstrap is manual only. Daily scheduling is enabled after quality and capacity validation.
 
 on:
-  schedule:
-    - cron: '7 4,9 * * 0,2,3,4,5,6'
   workflow_dispatch:
     inputs:
       smoke:
