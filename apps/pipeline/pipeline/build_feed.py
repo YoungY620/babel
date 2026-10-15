@@ -71,11 +71,14 @@ def md_to_html(md: str) -> str:
     return "\n".join(blocks)
 
 
-def page(title: str, body: str) -> str:
+def page(title: str, body: str, prefix: str = "") -> str:
     return f"""<!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(title)}</title>
+<link rel="icon" href="{prefix}favicon.svg" type="image/svg+xml">
+<link rel="icon" href="{prefix}favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="{prefix}apple-touch-icon.png">
 <style>{STYLE}</style></head><body>
 {body}
 </body></html>"""
@@ -200,7 +203,8 @@ def main():
         art_dir.mkdir(exist_ok=True)
         body = (f'<p class="back"><a href="../index.html">← 全部单集</a></p>\n'
                 f"<article>{md_to_html(m['article'])}</article>")
-        (art_dir / f"{m['slug']}.html").write_text(page(f"{m['title']} · 文字版", body))
+        (art_dir / f"{m['slug']}.html").write_text(
+            page(f"{m['title']} · 文字版", body, prefix="../"))
 
     # 按系列分组（shows.json 顺序优先，其余归 other）
     by_show = {}
