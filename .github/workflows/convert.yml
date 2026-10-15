@@ -12,6 +12,10 @@ on:
     - cron: '7 4,9 * * 0,2,3,4,5,6'
   workflow_dispatch:
     inputs:
+      smoke:
+        description: '仅验证 Ubuntu runner，不转换或发布'
+        type: boolean
+        default: false
       video_url:
         description: '视频/音频页 URL（优先，绕过周门控）'
         required: false
@@ -28,6 +32,7 @@ concurrency:        # 防重入：同一时刻只允许一个周期在跑，后�
 
 jobs:
   convert:
+    if: inputs.smoke != true
     runs-on: [self-hosted, Linux, X64, babel]
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -87,3 +92,33 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'
         working-directory: apps/pipeline
         run: bash pipeline/publish.sh
+
+  runner-smoke:
+    if: github.event_name == 'workflow_dispatch' && inputs.smoke == true
+    runs-on: [self-hosted, Linux, X64, babel]
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.12'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm moon run root:privacy pipeline:check pipeline:test
+      - name: Verify isolation
+        shell: bash
+        run: |
+          test "$(id -un)" = babel-runner
+          test "$(uname -m)" = x86_64
+          test ! -r /etc/rancher/k3s/k3s.yaml
+          test ! -w /var/run/docker.sock
+          python3.12 --version
+          ffmpeg -version | head -1
