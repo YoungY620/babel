@@ -6,17 +6,8 @@
 
 Usage: transcribe.py <slug> [--model large-v3-turbo] [--jobs N]
 """
-import argparse, json, math, os, subprocess, tempfile
+import argparse, json, math, os, subprocess
 from pathlib import Path
-
-# 兼容垫片：faster-whisper 1.2.1 给 av.open 传了 av>=15 已删除的
-# metadata_errors 参数，这里剥掉它（语义不变，本就只是抑制元数据告警）
-import av as _av
-_av_open = _av.open
-def _open_strip_metadata_errors(*a, **kw):
-    kw.pop("metadata_errors", None)
-    return _av_open(*a, **kw)
-_av.open = _open_strip_metadata_errors
 
 ROOT = Path(__file__).resolve().parent.parent
 CHUNK_LEN = int(os.environ.get("TRANSCRIBE_CHUNK_LEN", "1800"))  # 单片秒数
@@ -27,7 +18,8 @@ _model = None
 def _init_model(name):
     global _model
     from faster_whisper import WhisperModel
-    _model = WhisperModel(name, device="cpu", compute_type="int8")
+    _model = WhisperModel(name, device="cpu", compute_type="int8",
+                          cpu_threads=int(os.environ.get("OMP_NUM_THREADS", "2")))
 
 
 def _worker(arg):
@@ -52,41 +44,12 @@ def main():
     ap.add_argument("slug")
     ap.add_argument("--model", default="large-v3-turbo")
     ap.add_argument("--jobs", type=int,
-                    default=int(os.environ.get("TRANSCRIBE_JOBS", "2")))
-    ap.add_argument("--backend", default=os.environ.get("WHISPER_BACKEND", "auto"),
-                    choices=["auto", "mlx", "ct2"])
+                    default=int(os.environ.get("TRANSCRIBE_JOBS", "1")))
     args = ap.parse_args()
 
     d = ROOT / "episodes" / args.slug
     src = d / "source.mp3"
     assert src.exists(), f"missing {src}"
-
-    backend = args.backend
-    if backend == "auto":
-        try:
-            import mlx_whisper  # noqa
-            backend = "mlx"
-        except ImportError:
-            backend = "ct2"
-
-    if backend == "mlx":
-        # Apple GPU：整文件单进程，约 18x 实时，无需切片
-        import mlx_whisper
-        repo = os.environ.get("MLX_WHISPER_REPO",
-                              "mlx-community/whisper-large-v3-turbo")
-        r = mlx_whisper.transcribe(str(src), path_or_hf_repo=repo)
-        segs = [{"start": s["start"], "end": s["end"], "text": s["text"].strip()}
-                for s in r["segments"]]
-        print(f"mlx: {len(segs)} segments")
-        segs.sort(key=lambda s: s["start"])
-        (d / "transcript_en.json").write_text(
-            json.dumps(segs, ensure_ascii=False, indent=1))
-        srt = "\n".join(
-            f"{i+1}\n{fmt_ts(s['start'])} --> {fmt_ts(s['end'])}\n{s['text']}\n"
-            for i, s in enumerate(segs))
-        (d / "transcript_en.srt").write_text(srt)
-        print(f"OK {len(segs)} segments -> {d}")
-        return
 
     import mutagen
     dur = mutagen.File(src).info.length

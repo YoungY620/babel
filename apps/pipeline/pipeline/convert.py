@@ -113,13 +113,13 @@ def process(slug: str):
 def main():
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group()
-    g.add_argument("--cycle", "--next", action="store_true")
+    g.add_argument("--cycle", action="store_true")
     g.add_argument("--index", type=int)
     g.add_argument("--url")
     g.add_argument("--slug")
     ap.add_argument("--show", default=None)
     ap.add_argument("--workers", type=int,
-                    default=int(os.environ.get("CONVERT_WORKERS", "2")),
+                    default=int(os.environ.get("CONVERT_WORKERS", "1")),
                     help="并行处理的集数（每集内部转录再切片并行，注意总资源）")
     args = ap.parse_args()
 

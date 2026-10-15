@@ -20,7 +20,7 @@ fi
 for f in episodes/*/zh.mp3; do
   [ -e "$f" ] || continue
   slug=$(basename "$(dirname "$f")")
-  hash=$(md5 -q "$f" | cut -c1-8)
+  hash=$(md5sum "$f" | cut -c1-8)
   name="${slug}-zh-${hash}.mp3"
   if gh release view audio --repo "$GITHUB_USER/$GITHUB_REPO" --json assets \
        --jq ".assets[].name" | grep -qx "$name"; then

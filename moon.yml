@@ -1,0 +1,9 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+project:
+  name: 'workspace'
+  description: '仓库检查与开发任务'
+tasks:
+  privacy:
+    command: 'bash scripts/privacy_check.sh'
+    options:
+      cache: false

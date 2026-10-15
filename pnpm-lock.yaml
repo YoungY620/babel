@@ -9,7 +9,7 @@ importers:
   .:
     devDependencies:
       '@moonrepo/cli':
-        specifier: ^1.41.0
+        specifier: 1.41.7
         version: 1.41.7
 
 packages:
@@ -22,25 +22,21 @@ packages:
     resolution: {integrity: sha512-Opa+jmNLYsHMRlJcmIn78kKY+76CT/93BvynxuMICPfaQqJTAR/5WPGre1omehGlkg5rbiVshsNTiaa+2bHzpA==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@moonrepo/core-linux-arm64-musl@1.41.7':
     resolution: {integrity: sha512-0ipCRwg75iFWfsjxIYY9IAm/cMoUy9iUk/qs2+JhruFeDrY6tCdV9Nyo8F2h45WC+/2qwZ7IMEdfWNPJT0TSyA==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@moonrepo/core-linux-x64-gnu@1.41.7':
     resolution: {integrity: sha512-iHLaZF0ryKhFTf5G/dFrQHPEFII9p88pXXUl17U9tjfeziFyksbdkQrZhNv6sfbE0bDJGPA3H5TEMR93ZwXo/A==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@moonrepo/core-linux-x64-musl@1.41.7':
     resolution: {integrity: sha512-0nZMjOBBSGHNUSIGcCBrfxgKVmeZQjmXpeMVfO3YG9e2irFR2neHbNIud6vLapC+StgV2UbrKoExR+HRtoyzuA==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@moonrepo/core-macos-arm64@1.41.7':
     resolution: {integrity: sha512-Z6okifZS8MA6aXFQ1q/Ej45aAq6i2riDgqWB9CmBVqV7JIdJMLP4++ir+FqGu9S0G34SFgspV0g+mrfFgR+/Nw==}
