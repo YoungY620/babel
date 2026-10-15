@@ -1,4 +1,5 @@
 """Keep private runtime inputs outside disposable source checkouts."""
+import hashlib
 import os
 import re
 from pathlib import Path
@@ -22,3 +23,8 @@ def episode_directory(root, slug):
     if not directory.is_relative_to(episodes):
         raise ValueError("Invalid episode path")
     return directory
+
+
+def slugify(title):
+    normalized = re.sub(r"[^a-zA-Z0-9]+", "-", title.lower()).strip("-")[:60].rstrip("-")
+    return normalized or "episode-" + hashlib.sha256(title.encode()).hexdigest()[:12]

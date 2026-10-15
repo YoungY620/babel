@@ -5,8 +5,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-set -a; source config.env; set +a
 DATA_ROOT=$(.venv/bin/python -c 'from pathlib import Path; import sys; sys.path.insert(0,"pipeline"); from paths import data_root; print(data_root(Path.cwd()))')
+set -a; source "$DATA_ROOT/config.env"; set +a
 
 # 2. upload audio to rolling release（文件名带内容哈希，重渲染即新 URL）
 if ! gh release view audio --repo "$GITHUB_USER/$GITHUB_REPO" >/dev/null 2>&1; then
@@ -42,7 +42,7 @@ for f in "$DATA_ROOT"/episodes/*/zh.mp3; do
   else
     echo "upload $name"
     tmp=$(mktemp -d)
-    ln "$f" "$tmp/$name"   # gh release upload 用文件名做资产名，先硬链接改名
+    cp "$f" "$tmp/$name"   # Runtime storage and temporary storage may be different filesystems.
     gh release upload audio "$tmp/$name" --repo "$GITHUB_USER/$GITHUB_REPO"
     rm -rf "$tmp"
   fi

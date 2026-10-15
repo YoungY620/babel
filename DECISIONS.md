@@ -110,4 +110,4 @@ moon 只负责项目/任务登记与调度（根项目、apps/pipeline、apps/we
 
 ## D12 Runtime storage
 
-Private runtime files use one absolute `BABEL_DATA_DIR` shared by all pipeline commands. The Ubuntu control workflow uses `/srv/babel/data`; local development defaults to ignored `apps/pipeline/.data`. The source checkout contains code and reviewed configuration, not the authoritative episode state. No fallback reads the previous source-local episode directory. Each episode ID follows the catalog ID syntax; traversal and escaping directory symlinks fail before writes or cleanup.
+Private runtime files use one absolute `BABEL_DATA_DIR` shared by all pipeline commands. The Ubuntu control workflow uses `/srv/babel/data`; local development defaults to ignored `apps/pipeline/.data`. Publishing configuration also lives under this data directory. The source checkout contains code and reviewed show/voice configuration, not the authoritative episode state. No fallback reads the previous source-local episode directory. Each episode ID follows the catalog ID syntax; traversal and escaping directory symlinks fail before writes or cleanup.

@@ -40,7 +40,7 @@ jobs:
           repository: YoungY620/babel
           ref: main
           persist-credentials: false
-          clean: true     # Runtime inputs/checkpoints live outside this checkout.
+          clean: false    # Archive pre-upgrade state once before enabling source cleanup.
 
       - run: bash scripts/configure_pipeline.sh YoungY620/babel
 
@@ -113,7 +113,7 @@ jobs:
         with:
           repository: YoungY620/babel
           ref: main
-          clean: true
+          clean: false
           persist-credentials: false
       - run: bash scripts/configure_pipeline.sh YoungY620/babel
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4

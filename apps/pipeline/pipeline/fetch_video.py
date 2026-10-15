@@ -5,22 +5,17 @@ so interview videos flow through the same audio-only pipeline.
 Usage:
   fetch_video.py <url> [--slug NAME]
 """
-import argparse, json, os, re, subprocess, sys
+import argparse, json, os, subprocess, sys
 from datetime import datetime, timezone
 from email.utils import format_datetime
 from pathlib import Path
-from paths import data_root, episode_directory
+from paths import data_root, episode_directory, slugify
 
 ROOT = Path(__file__).resolve().parent.parent
 
 # prefer the yt-dlp living next to the venv python (usually newer than PATH's)
 _venv_ytdlp = Path(sys.executable).parent / "yt-dlp"
 YTDLP = str(_venv_ytdlp) if _venv_ytdlp.exists() else "yt-dlp"
-
-
-def slugify(title: str) -> str:
-    s = re.sub(r"[^a-zA-Z0-9]+", "-", title.lower()).strip("-")
-    return s[:60]
 
 
 def main():

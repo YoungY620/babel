@@ -13,7 +13,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "pipeline"))
 import fetch
 import transcribe
-from paths import data_root, episode_directory
+from paths import data_root, episode_directory, slugify
 
 
 class RuntimePathTests(unittest.TestCase):
@@ -53,6 +53,47 @@ class RuntimePathTests(unittest.TestCase):
             self.assertEqual(json.loads(checkpoint.read_text()), {"passed": True})
             self.assertFalse((checkout / "episodes").exists())
             self.assertFalse((checkout / ".data").exists())
+
+    def test_publishing_configuration_survives_checkout_replacement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            checkout, runtime = root / "checkout", root / "private-data"
+            repository = Path(__file__).resolve().parents[3]
+            def bootstrap():
+                (checkout / "scripts").mkdir(parents=True)
+                (checkout / "apps/pipeline/pipeline").mkdir(parents=True)
+                shutil.copy(repository / "scripts/configure_pipeline.sh", checkout / "scripts")
+                shutil.copy(repository / "apps/pipeline/pipeline/paths.py", checkout / "apps/pipeline/pipeline")
+                subprocess.run(["git", "init", "--quiet", str(checkout)], check=True)
+                subprocess.run(["bash", str(checkout / "scripts/configure_pipeline.sh"), "example/babel"],
+                               env={**os.environ, "BABEL_DATA_DIR": str(runtime)}, check=True)
+            bootstrap()
+            config = runtime / "config.env"
+            configured = config.read_text().replace('SUPPORT_LINKS=""', 'SUPPORT_LINKS="Ko-fi=https://ko-fi.com/example"')
+            config.write_text(configured)
+            shutil.rmtree(checkout)
+            bootstrap()
+            self.assertEqual(config.read_text(), configured)
+            self.assertFalse((checkout / "apps/pipeline/config.env").exists())
+            self.assertEqual(config.stat().st_mode & 0o777, 0o600)
+            # An old source-local config must never be silently replaced by defaults.
+            config.unlink()
+            legacy = checkout / "apps/pipeline/config.env"
+            legacy.write_text(configured)
+            result = subprocess.run(["bash", str(checkout / "scripts/configure_pipeline.sh"), "example/babel"],
+                                    env={**os.environ, "BABEL_DATA_DIR": str(runtime)}, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(config.exists())
+            self.assertEqual(legacy.read_text(), configured)
+
+    def test_generated_ids_match_the_path_contract(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            for title in ["中文标题", "", "a" * 59 + " next", "A normal title"]:
+                slug = slugify(title)
+                self.assertEqual(slugify(title), slug)
+                self.assertEqual(episode_directory(root, slug).name, slug)
+            self.assertNotEqual(slugify("中文标题"), slugify("另一个标题"))
 
     def test_default_absolute_override_and_storage_escape_guards(self):
         with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {}, clear=True):

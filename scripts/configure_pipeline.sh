@@ -11,8 +11,12 @@ owner=${repository%/*}
 repo=${repository#*/}
 git config user.name "$owner"
 git config user.email "$owner@users.noreply.github.com"
-if [ ! -f apps/pipeline/config.env ]; then
-  cat > apps/pipeline/config.env <<ENV
+if [ ! -f "$data_dir/config.env" ]; then
+  if [ -f apps/pipeline/config.env ]; then
+    echo "Move the existing publishing config into BABEL_DATA_DIR/config.env before bootstrap." >&2
+    exit 1
+  fi
+  cat > "$data_dir/config.env" <<ENV
 GITHUB_USER=$owner
 GITHUB_REPO=$repo
 SHOW_TITLE="巴别塔 Babel"
@@ -20,5 +24,5 @@ SHOW_AUTHOR="巴别塔 Babel"
 SHOW_EMAIL=$owner@users.noreply.github.com
 SUPPORT_LINKS=""
 ENV
-  chmod 600 apps/pipeline/config.env
+  chmod 600 "$data_dir/config.env"
 fi

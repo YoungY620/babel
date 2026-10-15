@@ -2,7 +2,7 @@
 """Build docs/feed.xml (podcast RSS) + docs/index.html (按系列切换的播放器)
 + docs/episodes/<slug>.html (中文文字版) + docs/covers/* (封面) from episodes/*.
 
-Reads config.env (apps/pipeline/config.env) and shows.json.
+Reads BABEL_DATA_DIR/config.env and source-controlled shows.json.
 
 Usage: build_feed.py
 """
@@ -47,7 +47,7 @@ article p{margin:.9em 0}
 
 def load_config():
     cfg = {}
-    p = ROOT / "config.env"
+    p = data_root(ROOT) / "config.env"
     for line in p.read_text().splitlines():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:

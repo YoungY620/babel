@@ -8,7 +8,7 @@ Usage:
 import argparse, json, re, urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from paths import data_root, episode_directory
+from paths import data_root, episode_directory, slugify
 
 ROOT = Path(__file__).resolve().parent.parent
 ITUNES = "{http://www.itunes.com/dtds/podcast-1.0.dtd}"
@@ -26,11 +26,6 @@ def get_show(show_id):
         if s["id"] == show_id:
             return s
     raise SystemExit(f"unknown show: {show_id}（见 shows.json）")
-
-
-def slugify(title: str) -> str:
-    s = re.sub(r"[^a-zA-Z0-9]+", "-", title.lower()).strip("-")
-    return s[:60]
 
 
 def load_feed(rss_url: str):
