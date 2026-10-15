@@ -1,0 +1,16 @@
+[
+  {
+    "id": "acquired",
+    "title": {"zh-CN": "Acquired", "en": "Acquired"},
+    "summary": {"zh-CN": "讲述公司的历史、关键选择和经营方法。", "en": "Company histories, pivotal decisions and business playbooks."},
+    "cover": "covers/babel.svg",
+    "links": [{"label": {"zh-CN": "节目官网", "en": "Original show"}, "url": "https://www.acquired.fm/"}]
+  },
+  {
+    "id": "dwarkesh",
+    "title": {"zh-CN": "Dwarkesh 访谈", "en": "Dwarkesh Podcast"},
+    "summary": {"zh-CN": "关于人工智能、历史和社会的深度访谈。", "en": "Long conversations about AI, history and society."},
+    "cover": "covers/babel.svg",
+    "links": [{"label": {"zh-CN": "节目官网", "en": "Original show"}, "url": "https://www.dwarkeshpatel.com/"}]
+  }
+]

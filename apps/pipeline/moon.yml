@@ -32,3 +32,7 @@ tasks:
     command: 'uv run --no-project --python 3.12 --with websocket-client==1.9.2 python pipeline/evaluate_speech.py'
     options:
       cache: false
+  catalog:
+    command: 'python3.12 pipeline/build_catalog.py'
+    options:
+      cache: false

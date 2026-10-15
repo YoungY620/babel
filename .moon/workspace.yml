@@ -4,3 +4,4 @@ projects:
   root: '.'
   pipeline: 'apps/pipeline'
   web: 'apps/web'
+  catalog: 'packages/catalog'
