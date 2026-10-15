@@ -12,6 +12,7 @@
 """
 import argparse, json, os, subprocess, sys
 from pathlib import Path
+from paths import data_root, episode_directory
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
@@ -30,7 +31,7 @@ def run(script, *args):
 
 def is_done(slug: str) -> bool:
     from completion import is_current
-    directory = ROOT / "episodes" / slug
+    directory = episode_directory(data_root(ROOT), slug)
     return is_current(directory)
 
 
@@ -77,7 +78,7 @@ def cycle_targets():
 
 
 def process(slug: str):
-    d = ROOT / "episodes" / slug
+    d = episode_directory(data_root(ROOT), slug)
     from transcribe import is_current as raw_current
     if not raw_current(d):
         run("transcribe.py", slug)

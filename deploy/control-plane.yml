@@ -16,6 +16,9 @@ on:
         description: 'RSS 单集序号（绕过周门控）'
         required: false
 
+env:
+  BABEL_DATA_DIR: /srv/babel/data
+
 permissions:
   contents: write
 
@@ -37,7 +40,7 @@ jobs:
           repository: YoungY620/babel
           ref: main
           persist-credentials: false
-          clean: false    # 保留工作区里的下载/venv/断点产物，跨 run 续跑
+          clean: false    # Archive pre-upgrade state once before enabling source cleanup.
 
       - run: bash scripts/configure_pipeline.sh YoungY620/babel
 

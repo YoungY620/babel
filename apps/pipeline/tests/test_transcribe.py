@@ -1,6 +1,7 @@
 """A single CPU worker must retain completed chunks across interruptions."""
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -30,10 +31,17 @@ class SerialExecutor:
 
 
 class CheckpointTest(unittest.TestCase):
+    def setUp(self):
+        # Server workflow tests must never read or remove production episode data.
+        clean = {key: value for key, value in os.environ.items() if key not in {"BABEL_DATA_DIR", "RAW_ASR_MODEL"}}
+        environment = patch.dict(os.environ, clean, clear=True)
+        environment.start()
+        self.addCleanup(environment.stop)
+
     def test_single_worker_resumes_completed_chunk(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            episode = root / 'episodes/long'
+            episode = root / '.data/episodes/long'
             parts = episode / '.transcribe_parts'
             parts.mkdir(parents=True)
             (episode / 'source.mp3').touch()
@@ -67,7 +75,7 @@ class CheckpointTest(unittest.TestCase):
     def test_interrupted_split_does_not_expose_partial_chunks(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            episode = root / 'episodes/long'
+            episode = root / '.data/episodes/long'
             episode.mkdir(parents=True)
             (episode / 'source.mp3').touch()
             mutagen = SimpleNamespace(File=lambda _: SimpleNamespace(

@@ -2,13 +2,14 @@
 """Build docs/feed.xml (podcast RSS) + docs/index.html (按系列切换的播放器)
 + docs/episodes/<slug>.html (中文文字版) + docs/covers/* (封面) from episodes/*.
 
-Reads config.env (apps/pipeline/config.env) and shows.json.
+Reads BABEL_DATA_DIR/config.env and source-controlled shows.json.
 
 Usage: build_feed.py
 """
 import json, html, os, urllib.request
 from pathlib import Path
 from completion import is_current
+from paths import data_root
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 
@@ -46,7 +47,7 @@ article p{margin:.9em 0}
 
 def load_config():
     cfg = {}
-    p = ROOT / "config.env"
+    p = data_root(ROOT) / "config.env"
     for line in p.read_text().splitlines():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
@@ -140,7 +141,7 @@ def main():
     show_names = {s["id"]: s["name"] for s in shows}
 
     eps = []
-    for d in sorted((ROOT / "episodes").iterdir()):
+    for d in sorted((data_root(ROOT) / "episodes").glob("*")):
         meta_p, mp3 = d / "meta.json", d / "zh.mp3"
         if not (meta_p.exists() and mp3.exists() and is_current(d)):
             continue

@@ -14,6 +14,7 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 from completion import is_current
+from paths import data_root
 from tts import file_hash
 
 REPO = Path(__file__).resolve().parents[3]
@@ -52,7 +53,7 @@ def export_catalog(output, episodes, series, assets, audio_base):
         target.parent.mkdir(exist_ok=True)
         shutil.copyfile(assets / cover, target)
     published = []
-    for directory in sorted(episodes.iterdir()):
+    for directory in sorted(episodes.glob("*")):
         if not is_current(directory) or not (directory / "web.json").is_file():
             continue
         slug = directory.name
@@ -119,7 +120,7 @@ def main():
     parser.add_argument("--audio-base", required=True)
     args = parser.parse_args()
     series = json.loads((REPO / "site/series.json").read_text())
-    export_catalog(args.output, ROOT / "episodes", series, REPO / "site", args.audio_base)
+    export_catalog(args.output, data_root(ROOT) / "episodes", series, REPO / "site", args.audio_base)
     subprocess.run(["pnpm", "--filter", "@babel/catalog", "validate", str(args.output.resolve())], cwd=REPO, check=True)
 
 

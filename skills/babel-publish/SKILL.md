@@ -5,6 +5,8 @@ description: 巴别塔 Babel — 构建播客 RSS/播放器并发布到 GitHub P
 
 # babel-publish：发布
 
+运行文件位于 `BABEL_DATA_DIR/episodes/<id>`；服务器使用 `/srv/babel/data`，本地默认 `apps/pipeline/.data`。下文产物路径均相对此目录。代码路径仍相对仓库。
+
 工作目录：`apps/pipeline/`。
 
 ```bash

@@ -9,6 +9,7 @@ Usage: diarize.py <slug> [--speakers N]
 """
 import argparse, json, subprocess, sys, tempfile
 from pathlib import Path
+from paths import data_root, episode_directory
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
@@ -16,7 +17,7 @@ from fetch import get_show  # noqa: E402
 
 
 def expected_speakers(slug: str) -> int:
-    meta = json.loads((ROOT / "episodes" / slug / "meta.json").read_text())
+    meta = json.loads((episode_directory(data_root(ROOT), slug) / "meta.json").read_text())
     try:
         show = get_show(meta.get("show", ""))
         return int(show.get("expected_speakers", 2))
@@ -36,7 +37,7 @@ def main():
     ap.add_argument("--speakers", type=int, default=None)
     args = ap.parse_args()
 
-    d = ROOT / "episodes" / args.slug
+    d = episode_directory(data_root(ROOT), args.slug)
     segs = json.loads((d / "transcript_en.json").read_text())
     src = d / "source.mp3"
     k = args.speakers or expected_speakers(args.slug)

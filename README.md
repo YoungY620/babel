@@ -39,7 +39,9 @@ cd apps/pipeline
 cd ../..
 pnpm moon run pipeline:setup
 cd apps/pipeline
-cp config.env.example config.env   # 填 GitHub 账号信息
+export BABEL_DATA_DIR=/srv/babel/data  # 服务器上的私有目录；本地默认 .data
+mkdir -p "$BABEL_DATA_DIR"
+cp config.env.example "$BABEL_DATA_DIR/config.env"   # 首次配置 GitHub 账号信息
 export OPENAI_API_KEY=...          # 翻译、语音合成与音频校验
 
 .venv/bin/python pipeline/convert.py --cycle    # 处理本周期全部批次
@@ -104,12 +106,12 @@ bash pipeline/publish.sh                        # 发布到 Pages + Releases
 ## YouTube 抓取
 
 YouTube 有机器人风控。首次在浏览器登录 YouTube 后运行
-`scripts/cookies_refresh.sh chrome` 导出 cookies（gitignore），
+`scripts/cookies_refresh.sh chrome` 将 cookies 导出到私有运行目录的 `private/cookies.txt`，
 之后自动生效；失效重跑即可。B 站等平台无需此步骤。
 
 ## 赞助链接
 
-赞助平台只用 Ko-fi。注册后把主页链接填进 `config.env`：
+赞助平台只用 Ko-fi。注册后把主页链接填进私有运行目录的 `config.env`：
 
 ```
 SUPPORT_LINKS="Ko-fi=https://ko-fi.com/<你的名字>"

@@ -8,7 +8,7 @@ Usage: transcribe.py <slug> [--model large-v3-turbo] [--jobs N]
 """
 import argparse, json, math, os, subprocess, tempfile, shutil
 from tts import digest, file_hash, save
-from paths import episode_directory
+from paths import data_root, episode_directory
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -73,7 +73,7 @@ def main():
                     default=int(os.environ.get("TRANSCRIBE_JOBS", "1")))
     args = ap.parse_args()
 
-    d = episode_directory(ROOT, args.slug)
+    d = episode_directory(data_root(ROOT), args.slug)
     src = d / "source.mp3"
     assert src.exists(), f"missing {src}"
 

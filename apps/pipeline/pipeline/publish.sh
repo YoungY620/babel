@@ -5,7 +5,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-set -a; source config.env; set +a
+DATA_ROOT=$(.venv/bin/python -c 'from pathlib import Path; import sys; sys.path.insert(0,"pipeline"); from paths import data_root; print(data_root(Path.cwd()))')
+set -a; source "$DATA_ROOT/config.env"; set +a
 
 # 2. upload audio to rolling release（文件名带内容哈希，重渲染即新 URL）
 if ! gh release view audio --repo "$GITHUB_USER/$GITHUB_REPO" >/dev/null 2>&1; then
@@ -25,7 +26,7 @@ for asset in json.load(sys.stdin)["assets"]:
       gh release delete-asset audio "$obsolete" --repo "$GITHUB_USER/$GITHUB_REPO" --yes
     done
 }
-for f in episodes/*/zh.mp3; do
+for f in "$DATA_ROOT"/episodes/*/zh.mp3; do
   [ -e "$f" ] || continue
   slug=$(basename "$(dirname "$f")")
   if ! .venv/bin/python pipeline/completion.py "$slug"; then
@@ -33,7 +34,7 @@ for f in episodes/*/zh.mp3; do
     echo "skip unverified audio: $slug"
     continue
   fi
-  hash=$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1]))["audio_sha256"][:12])' "episodes/$slug/speech.json")
+  hash=$(.venv/bin/python -c 'import json,sys; print(json.load(open(sys.argv[1]))["audio_sha256"][:12])' "$DATA_ROOT/episodes/$slug/speech.json")
   name="${slug}-zh-${hash}.mp3"
   if gh release view audio --repo "$GITHUB_USER/$GITHUB_REPO" --json assets \
        --jq ".assets[].name" | grep -qx "$name"; then
@@ -41,7 +42,7 @@ for f in episodes/*/zh.mp3; do
   else
     echo "upload $name"
     tmp=$(mktemp -d)
-    ln "$f" "$tmp/$name"   # gh release upload 用文件名做资产名，先硬链接改名
+    cp "$f" "$tmp/$name"   # Runtime storage and temporary storage may be different filesystems.
     gh release upload audio "$tmp/$name" --repo "$GITHUB_USER/$GITHUB_REPO"
     rm -rf "$tmp"
   fi

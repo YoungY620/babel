@@ -33,3 +33,11 @@ Research Agent 的配置上限不代表最低所需资源。
 先在私有仓库手动运行 `smoke=true`，检查真实执行、资源限制、Python、FFmpeg、Moon、Git 身份与配置读取。
 Smoke 不使用模型密钥和发布 token；checkout 公共源码不需要凭据。
 公开配置由 `configure_pipeline.sh YoungY620/babel` 首次生成，不得存放密钥。
+
+## Persistent private data
+
+The control workflow sets `BABEL_DATA_DIR=/srv/babel/data`. `configure_pipeline.sh` creates the private episode directory with umask 077. Downloads, source transcripts, speaker references, reviewed scripts and speech checkpoints all live under `BABEL_DATA_DIR/episodes/<id>`. Optional operator cookies live in `BABEL_DATA_DIR/private/cookies.txt`. A fresh checkout can be cleaned without losing this state.
+
+Local tools default to the ignored `apps/pipeline/.data` directory. Production must use the external absolute path. Publishing configuration also lives at `BABEL_DATA_DIR/config.env`; existing values are never replaced by bootstrap defaults. Only generated publication staging can be rebuilt inside the checkout. Old `apps/pipeline/episodes` paths are not read as a fallback; only explicitly reviewed artifacts may be imported into the private directory.
+
+Before the first cleanup on an existing runner, archive its previous source-local episodes, ignored manual inputs and configuration into private storage. The bootstrap template retains `clean: false` until that operator step is verified. This is a one-time preservation step, not a compatibility reader; old unreviewed artifacts do not become publishable. Enable source cleanup only after that archive is checked.

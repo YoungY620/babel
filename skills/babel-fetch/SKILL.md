@@ -5,6 +5,8 @@ description: 巴别塔 Babel — 抓取播客单集或访谈视频/音频为 sou
 
 # babel-fetch：抓取源音频
 
+运行文件位于 `BABEL_DATA_DIR/episodes/<id>`；服务器使用 `/srv/babel/data`，本地默认 `apps/pipeline/.data`。下文产物路径均相对此目录。代码路径仍相对仓库。
+
 工作目录：`apps/pipeline/`（monorepo 根下的 venv 在 `apps/pipeline/.venv`）。
 
 ## 播客 RSS 单集
@@ -29,7 +31,7 @@ cd apps/pipeline
 
 ## YouTube 风控（403 / "not a bot"）
 
-`secrets/cookies.txt` 存在时 `fetch_video.py` 会自动使用。
+`BABEL_DATA_DIR/private/cookies.txt` 存在时 `fetch_video.py` 会自动使用。
 失效时让用户在浏览器登录 YouTube 后运行：
 
 ```bash

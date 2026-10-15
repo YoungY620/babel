@@ -15,4 +15,9 @@ jobs:
         with:
           node-version: '22'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm moon run root:privacy pipeline:check pipeline:test catalog:check catalog:test web:check web:test web:build
+      - name: Check code and isolate test data
+        env:
+          BABEL_DATA_DIR: ${{ runner.temp }}/babel-reserved-runtime
+        run: |
+          pnpm moon run root:privacy pipeline:check pipeline:test catalog:check catalog:test web:check web:test web:build
+          test ! -e "$BABEL_DATA_DIR"
