@@ -13,7 +13,7 @@ def request(path, payload=None, content_type="application/json"):
     base = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     for attempt in range(3):
         req = urllib.request.Request(base + "/" + path, data=body, headers={
-            "Authorization": "Bearer " + os.environ["OPENAI_API_KEY"],
+            "Authorization": "Bearer " + os.environ["OPENAI_API_KEY"].strip(),
             "Content-Type": content_type,
         })
         try:
@@ -26,7 +26,7 @@ def request(path, payload=None, content_type="application/json"):
                 code = None
             known = {"invalid_api_key", "insufficient_quota", "model_not_found", "permission_denied",
                      "rate_limit_exceeded", "unsupported_country_region_territory"}
-            code = code if code in known else "unknown"
+            code = code if isinstance(code, str) and code in known else "unknown"
             if error.code not in (429, 500, 502, 503, 504) or code == "insufficient_quota" or attempt == 2:
                 raise RuntimeError(f"Model provider returned HTTP {error.code} ({code}) for {path}") from None
             time.sleep(2 ** attempt)
