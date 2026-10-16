@@ -26,3 +26,5 @@ apps/pipeline/episodes/*/script_override.json
 
 # Private runtime state; production sets BABEL_DATA_DIR outside this checkout.
 apps/pipeline/.data/
+
+.publication-input/

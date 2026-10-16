@@ -15,3 +15,5 @@ tasks:
   build:
     command: 'pnpm build'
     outputs: ['dist']
+    options:
+      cache: false # Publication data can change without a source commit.

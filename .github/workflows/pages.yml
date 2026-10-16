@@ -1,16 +1,25 @@
 name: pages
+run-name: Pages ${{ inputs.publication_revision || github.sha }}
 on:
   push:
     branches: [main]
     paths:
       - 'apps/web/**'
       - 'packages/catalog/**'
+      - 'apps/pipeline/pipeline/**'
+      - 'site/**'
+      - 'scripts/resolve_publication.sh'
       - '.moon/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
+    inputs:
+      publication_revision:
+        description: 'Full data-only commit SHA; empty uses the publication branch'
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -24,15 +33,69 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Resolve immutable publication data
+        id: publication
+        env:
+          REQUESTED_PUBLICATION: ${{ inputs.publication_revision }}
+        run: |
+          revision=$(bash scripts/resolve_publication.sh)
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        if: steps.publication.outputs.revision != ''
+        with:
+          ref: ${{ steps.publication.outputs.revision }}
+          path: .publication-input
           persist-credentials: false
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        if: steps.publication.outputs.revision != ''
+      - name: Install snapshot Python
+        if: steps.publication.outputs.revision != ''
+        run: |
+          uv python install 3.12
+          echo "$(dirname "$(uv python find 3.12)")" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
-      - run: pnpm moon run root:privacy catalog:check catalog:test web:check web:test web:build
+      - name: Load typed data and regenerate bilingual feeds
+        if: steps.publication.outputs.revision != ''
+        env:
+          BABEL_DATA_DIR: ${{ runner.temp }}/babel-no-processing-state
+          PUBLIC_AUTHOR: ${{ vars.SHOW_AUTHOR }}
+          PUBLIC_EMAIL: ${{ vars.SHOW_EMAIL }}
+        run: |
+          pnpm moon run pipeline:publication -- \
+            --output "$RUNNER_TEMP/babel-publication" \
+            --previous "$GITHUB_WORKSPACE/.publication-input" \
+            --site-url "https://youngy620.github.io/babel" \
+            --audio-base "https://github.com/$GITHUB_REPOSITORY/releases/download/audio" \
+            --author "${PUBLIC_AUTHOR:-Babel}" --email "$PUBLIC_EMAIL"
+          rm -rf -- apps/web/public/episodes apps/web/public/covers
+          rm -f -- apps/web/public/catalog.json apps/web/public/feed.xml apps/web/public/feed-en.xml
+          cp -R "$RUNNER_TEMP/babel-publication/." apps/web/public/
+      - name: Build reviewed Web code
+        env:
+          VITE_SUPPORT_URL: ${{ vars.VITE_SUPPORT_URL }}
+        run: pnpm moon run root:privacy catalog:check catalog:test web:check web:test web:build
       - name: Validate complete publication artifact
         run: pnpm --filter @babel/catalog validate "$GITHUB_WORKSPACE/apps/web/dist"
+      - name: Write deployment receipt
+        env:
+          DATA_REVISION: ${{ steps.publication.outputs.revision }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path('apps/web/dist')
+          receipt = {'codeRevision': os.environ['GITHUB_SHA'],
+                     'dataRevision': os.environ.get('DATA_REVISION') or None,
+                     'catalogSha256': hashlib.sha256((root / 'catalog.json').read_bytes()).hexdigest(),
+                     'runId': int(os.environ['GITHUB_RUN_ID'])}
+          (root / 'publication.json').write_text(json.dumps(receipt) + '\n')
+          PY
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
         with:
           path: apps/web/dist
