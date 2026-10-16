@@ -72,6 +72,13 @@ jobs:
           echo "week=$WEEK last=$LAST"
           if [ "$LAST" = "$WEEK" ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
 
+      - name: provider preflight
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'
+        working-directory: apps/pipeline
+        run: python3.12 pipeline/preflight.py
+
       - run: pnpm install --frozen-lockfile
       - name: ensure venv
         if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'

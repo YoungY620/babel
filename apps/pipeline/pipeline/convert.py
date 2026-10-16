@@ -17,6 +17,7 @@ from paths import data_root, episode_directory
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 from fetch import download, get_show, load_items, load_shows, slugify  # noqa: E402
+from preflight import check_provider  # noqa: E402
 
 PY = sys.executable
 
@@ -101,6 +102,7 @@ def process(slug: str):
 
 
 def main():
+    check_provider()   # 重活开始前先验证 provider 凭据，无效则立即中止
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--cycle", action="store_true")
