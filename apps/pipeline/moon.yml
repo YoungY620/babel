@@ -40,3 +40,7 @@ tasks:
     command: 'python3.12 pipeline/build_publication.py'
     options:
       cache: false
+  assets:
+    command: 'python3.12 pipeline/publish_assets.py'
+    options:
+      cache: false
