@@ -9,6 +9,15 @@ on:
         description: '仅验证 Ubuntu runner，不转换或发布'
         type: boolean
         default: false
+      profile:
+        description: '资源档：full=OMP 2 线程（默认）；half=OMP 1 线程'
+        type: choice
+        options: [full, half]
+        default: full
+      weekly:
+        description: '显式周模式：同一自然周只跑一次（state.json 周门控）；每日 schedule 不受周门控'
+        type: boolean
+        default: false
       video_url:
         description: '视频/音频页 URL（优先，绕过周门控）'
         required: false
@@ -19,6 +28,8 @@ on:
         description: '仅运行新发布事务（stage → audio release → publication 分支 → Pages）'
         type: boolean
         default: false
+  schedule:
+    - cron: '0 16 * * *'   # 每天北京时间 00:00
 
 env:
   BABEL_DATA_DIR: /srv/babel/data
@@ -34,12 +45,27 @@ jobs:
   convert:
     if: inputs.smoke != true && inputs.publish != true
     runs-on: [self-hosted, Linux, X64, babel]
+    timeout-minutes: 1200   # 20 小时硬上限
     env:
       CONVERT_WORKERS: "1"
       TRANSCRIBE_JOBS: "1"
-      OMP_NUM_THREADS: "2"
+      OMP_NUM_THREADS: ${{ inputs.profile == 'half' && '1' || '2' }}
     steps:
+      - name: daily gate
+        id: daily
+        if: github.event_name == 'schedule'
+        env:
+          DAILY_ENABLED: ${{ vars.BABEL_DAILY_ENABLED }}
+        run: |
+          if [ "$DAILY_ENABLED" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "daily cycle disabled"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: steps.daily.outputs.enabled != 'false'
         with:
           repository: YoungY620/babel
           ref: main
@@ -47,24 +73,31 @@ jobs:
           clean: false    # Archive pre-upgrade state once before enabling source cleanup.
 
       - run: bash scripts/configure_pipeline.sh YoungY620/babel
+        if: steps.daily.outputs.enabled != 'false'
 
       - name: privacy check
+        if: steps.daily.outputs.enabled != 'false'
         run: bash scripts/privacy_check.sh
 
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        if: steps.daily.outputs.enabled != 'false'
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        if: steps.daily.outputs.enabled != 'false'
         with:
           node-version: '22'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        if: steps.daily.outputs.enabled != 'false'
         with:
           python-version: '3.12'
       - name: Install Python
+        if: steps.daily.outputs.enabled != 'false'
         run: |
           uv python install 3.12
           echo "$(dirname "$(uv python find 3.12)")" >> "$GITHUB_PATH"
 
       - name: weekly gate
         id: gate
+        if: steps.daily.outputs.enabled != 'false' && github.event_name == 'workflow_dispatch' && inputs.weekly == true
         working-directory: apps/pipeline
         run: |
           WEEK=$(date -u +%G-W%V)
@@ -75,19 +108,20 @@ jobs:
       - name: provider preflight
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'
+        if: steps.daily.outputs.enabled != 'false' && steps.gate.outputs.skip != 'true'
         working-directory: apps/pipeline
         run: python3.12 pipeline/preflight.py
 
       - run: pnpm install --frozen-lockfile
+        if: steps.daily.outputs.enabled != 'false'
       - name: ensure venv
-        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'
+        if: steps.daily.outputs.enabled != 'false' && steps.gate.outputs.skip != 'true'
         run: pnpm moon run pipeline:setup
 
       - name: convert
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'
+        if: steps.daily.outputs.enabled != 'false' && steps.gate.outputs.skip != 'true'
         working-directory: apps/pipeline
         run: |
           if [ -n "${{ inputs.video_url }}" ]; then
@@ -99,7 +133,7 @@ jobs:
           fi
 
       - name: mark week done
-        if: github.event_name == 'schedule' && success()
+        if: steps.daily.outputs.enabled != 'false' && github.event_name == 'workflow_dispatch' && inputs.weekly == true && success()
         working-directory: apps/pipeline
         run: |
           python3 -c "import json,os;json.dump({'last_week':os.popen('date -u +%G-W%V').read().strip()},open('state.json','w'))"
@@ -107,11 +141,24 @@ jobs:
       - name: publish
         env:
           GH_TOKEN: ${{ secrets.BABEL_PUBLISH_TOKEN }}
-        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'
+        if: steps.daily.outputs.enabled != 'false' && steps.gate.outputs.skip != 'true'
         working-directory: apps/pipeline
         run: |
           gh auth setup-git
           bash pipeline/publish.sh
+
+      - name: stage metrics summary
+        if: ${{ !cancelled() && steps.daily.outputs.enabled != 'false' && steps.gate.outputs.skip != 'true' }}
+        working-directory: apps/pipeline
+        run: |
+          python3.12 - <<'PY'
+          import json, os, sys
+          sys.path.insert(0, "pipeline")
+          from metrics import stages_file, summarize_stage_seconds, tail_stage_records
+          from paths import data_root
+          rows = tail_stage_records(stages_file(data_root(os.getcwd())), 200)
+          print("stage-metrics " + json.dumps(summarize_stage_seconds(rows), sort_keys=True, separators=(",", ":")))
+          PY
 
   publish:
     # New publisher transaction, manual only. The legacy convert/publish path above is

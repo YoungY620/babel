@@ -10,24 +10,42 @@
 
 各阶段幂等：已存在的产物会跳过。完成后跑 build_feed.py 即可发布。
 """
-import argparse, os, subprocess, sys
+import argparse, os, subprocess, sys, time
 from pathlib import Path
 from paths import data_root, episode_directory
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 from fetch import download, get_show, load_items, load_shows, slugify  # noqa: E402
+from metrics import append_stage_record  # noqa: E402
 from preflight import check_provider  # noqa: E402
 
 PY = sys.executable
+
+
+def record_stage(episode, stage, seconds, ok):
+    try:
+        append_stage_record(data_root(ROOT), {
+            "episode": episode, "stage": stage,
+            "seconds": round(seconds, 3), "ok": ok,
+        })
+    except Exception as error:   # metrics 只是观测手段，绝不影响转换主流程
+        print(f"stage metrics warning: {error}", file=sys.stderr)
 
 
 def run(script, *args):
     print(f"\n=== {script} {' '.join(str(a) for a in args)} ===", flush=True)
     env = dict(os.environ)
     env.setdefault("OMP_NUM_THREADS", "2")   # 限制每个 CPU 重任务的线程数，控制总资源
-    subprocess.run([PY, str(ROOT / "pipeline" / script), *[str(a) for a in args]],
-                   check=True, env=env)
+    start = time.monotonic()
+    ok = False
+    try:
+        subprocess.run([PY, str(ROOT / "pipeline" / script), *[str(a) for a in args]],
+                       check=True, env=env)
+        ok = True
+    finally:
+        # process() 总是把 slug 作为第一个参数；build_feed.py 等无参脚本的 episode 记为 null
+        record_stage(str(args[0]) if args else None, script, time.monotonic() - start, ok)
 
 
 def is_done(slug: str) -> bool:
