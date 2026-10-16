@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 
 
-def request(path, payload=None, content_type="application/json"):
+def request(path, payload=None, content_type="application/json", timeout=300):
     body = payload if isinstance(payload, bytes) else (
         json.dumps(payload, ensure_ascii=False).encode() if payload is not None else None)
     base = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
@@ -17,7 +17,7 @@ def request(path, payload=None, content_type="application/json"):
             "Content-Type": content_type,
         })
         try:
-            with urllib.request.urlopen(req, timeout=300) as response:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
                 return response.read()
         except urllib.error.HTTPError as error:
             try:
