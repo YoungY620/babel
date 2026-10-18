@@ -1,0 +1,11 @@
+# Whole-cycle deadline
+
+The limit is 20 hours of elapsed work, not 20 hours of source or generated audio. `convert.py --deadline EPOCH` accepts a shared UTC epoch no more than 20 hours ahead. The workflow must record it before setup and pass the same deadline to publication. Without that integration, the existing Actions job timeout alone does not prove the whole transaction fits the budget.
+
+The conversion cutoff subtracts `--publish-reserve-seconds` (default 5400 seconds) from that deadline. This is an execution reserve, not a measured capacity claim. The controller arms a parent alarm so feed/network work is also bounded. Its control exception bypasses ordinary transient-network exception/retry handlers. Each external stage runs in a new process session; deadline, error or interruption kills that session's process group and reaps its leader. Atomic per-stage checkpoints remain the resume boundary. GHA's runner/service resource and job limits remain the outer containment boundary.
+
+Episodes run sequentially, with shows interleaved. Each download finishes immediately before its conversion starts. A later episode is not downloaded after budget exhaustion. RSS source bytes remain `.part` until the response completes; video download/conversion stays in private staging until successful extraction, so a killed encoder cannot leave a completed `source.mp3`. Video extraction prefers audio-only formats.
+
+The old source-duration/count caps are removed: they cannot establish the requested work-time boundary. No replacement output-hour/count values are claimed without successful whole-pipeline measurements. `processing-complete` metrics record actual generated audio seconds, one completed processing episode, its processing elapsed time and CPU thread setting. These records exclude publishing and must not be presented as full-pipeline throughput. Publication and setup timing must be included before fitting capacity.
+
+The CLI no longer emits the legacy HTML/feed or publishes as an implicit side effect. The control workflow must invoke the reviewed snapshot/asset/receipt transaction within the remaining shared deadline. Until that integration is deployed and cloud credentials work, daily production and calibrated capacity remain unverified.

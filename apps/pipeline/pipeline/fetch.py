@@ -9,6 +9,7 @@ import argparse, json, re, urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from paths import data_root, episode_directory, slugify
+from tts import save
 
 ROOT = Path(__file__).resolve().parent.parent
 ITUNES = "{http://www.itunes.com/dtds/podcast-1.0.dtd}"
@@ -90,14 +91,18 @@ def download(show, index: int) -> str:
     meta = {**it, "slug": slug, "show": show["id"], "source": show["rss"],
             "show_name": channel["title"], "show_description": channel["description"],
             "show_image": channel["image"]}
-    (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2))
     out = d / "source.mp3"
     if not out.exists():
         print(f"downloading {it['bytes']/1e6:.1f} MB -> {out}", flush=True)
         req = urllib.request.Request(it["url"], headers=UA)
-        with urllib.request.urlopen(req) as r, open(out, "wb") as f:
+        with urllib.request.urlopen(req, timeout=60) as r, open(out.with_suffix(".mp3.part"), "wb") as f:
+            expected = getattr(r, "headers", {}).get("Content-Length")
             while chunk := r.read(1 << 20):
                 f.write(chunk)
+            if expected is not None and f.tell() != int(expected):
+                raise OSError("Incomplete source response")
+        out.with_suffix(".mp3.part").replace(out)
+    save(d / "meta.json", meta)
     print(f"OK {d}")
     return slug
 
@@ -105,6 +110,7 @@ def download(show, index: int) -> str:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--result", type=Path, help="Private result JSON for the cycle controller")
     ap.add_argument("--show", default=None)
     ap.add_argument("--limit", type=int, default=30)
     ap.add_argument("--download", type=int, default=None)
@@ -113,7 +119,9 @@ def main():
     if args.download is not None:
         if not args.show:
             raise SystemExit("--download 需要 --show <id>")
-        download(get_show(args.show), args.download)
+        slug = download(get_show(args.show), args.download)
+        if args.result:
+            save(args.result, {"slug": slug})
         return
 
     shows = [get_show(args.show)] if args.show else load_shows()
