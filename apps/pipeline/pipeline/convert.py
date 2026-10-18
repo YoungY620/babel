@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
-"""一站式转换入口：fetch（如需）→ transcribe → translate → tts → polish 文字版。
-
-模式：
-  convert.py --cycle       # 定时任务用（默认）：全部未处理单集（最新优先），
-                           #   联合上限——仅当 总时长>8h 且 集数>5 时才截断
-  convert.py --index N --show ID   # 指定节目 + 单集序号
-  convert.py --url URL     # 任意视频/音频页面（yt-dlp 抽音轨）
-  convert.py --slug SLUG   # 已下载好的单集目录
-
-各阶段幂等：已存在的产物会跳过。完成后跑 build_feed.py 即可发布。
-"""
-import argparse, os, subprocess, sys, time
+"""Sequential conversion with one wall-clock deadline and resumable stage outputs."""
+import argparse, json, math, os, subprocess, sys, tempfile, time
 from pathlib import Path
 from paths import data_root, episode_directory
 
@@ -18,30 +8,30 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 from fetch import download, get_show, load_items, load_shows, slugify  # noqa: E402
 from metrics import append_stage_record  # noqa: E402
+from budget import BudgetExpired, remaining, run_command, work_deadline
 from preflight import check_provider  # noqa: E402
 
 PY = sys.executable
 
 
-def record_stage(episode, stage, seconds, ok):
+def record_stage(episode, stage, seconds, ok, **fields):
     try:
         append_stage_record(data_root(ROOT), {
             "episode": episode, "stage": stage,
-            "seconds": round(seconds, 3), "ok": ok,
+            "seconds": round(seconds, 3), "ok": ok, **fields,
         })
     except Exception as error:   # metrics 只是观测手段，绝不影响转换主流程
         print(f"stage metrics warning: {error}", file=sys.stderr)
 
 
 def run(script, *args):
-    print(f"\n=== {script} {' '.join(str(a) for a in args)} ===", flush=True)
+    print(f"\n=== {script} ===", flush=True)
     env = dict(os.environ)
     env.setdefault("OMP_NUM_THREADS", "2")   # 限制每个 CPU 重任务的线程数，控制总资源
     start = time.monotonic()
     ok = False
     try:
-        subprocess.run([PY, str(ROOT / "pipeline" / script), *[str(a) for a in args]],
-                       check=True, env=env)
+        run_command([PY, str(ROOT / "pipeline" / script), *[str(a) for a in args]], env=env)
         ok = True
     finally:
         # process() 总是把 slug 作为第一个参数；build_feed.py 等无参脚本的 episode 记为 null
@@ -54,46 +44,20 @@ def is_done(slug: str) -> bool:
     return is_current(directory)
 
 
-CAP_HOURS, CAP_COUNT = 8, 5
-
-
-def parse_duration(d) -> float:
-    """itunes:duration -> 秒。兼容 秒数 / MM:SS / HH:MM:SS。"""
-    d = str(d or "").strip()
-    if not d:
-        return 0.0
-    try:
-        return float(d)
-    except ValueError:
-        sec = 0.0
-        for p in d.split(":"):
-            sec = sec * 60 + float(p)
-        return sec
-
-
 def cycle_targets():
-    """本周期批次：全部未处理单集（各节目最新优先），联合上限——
-    仅当 总时长 > 8h 且 集数 > 5 时才拒收（即 ≤5 集时长不限，或 ≤8h 集数不限）。"""
-    batch, total_h = [], 0.0
+    """Round-robin unfinished sources. No unmeasured audio-hour/episode quota."""
+    feeds = []
     for show in load_shows():
         try:
-            items = load_items(show["rss"])
-        except Exception as e:                      # 单个节目源故障不拖垮整个周期
-            print(f"[{show['id']}] RSS 拉取失败，本周期跳过: {e}")
-            continue
-        added = 0
-        for i, it in enumerate(items):
-            if is_done(slugify(it["title"])):
-                continue
-            cand_h = total_h + parse_duration(it["duration"]) / 3600
-            cand_n = len(batch) + 1
-            if cand_h > CAP_HOURS and cand_n > CAP_COUNT:
-                continue
-            batch.append((show, i))
-            total_h, added = cand_h, added + 1
-        print(f"[{show['id']}] 本周期入选 {added} 集")
-    print(f"批次合计 {len(batch)} 集 ≈ {total_h:.1f} 小时")
-    return batch
+            feeds.append((show, load_items(show["rss"])))
+        except BudgetExpired:
+            raise
+        except Exception:
+            print(f"[{show['id']}] Feed unavailable; retained for a later cycle")
+    for index in range(max((len(items) for _, items in feeds), default=0)):
+        for show, items in feeds:
+            if index < len(items) and not is_done(slugify(items[index]["title"])):
+                yield show, index
 
 
 def process(slug: str):
@@ -119,54 +83,77 @@ def process(slug: str):
     run("tts.py", slug)
 
 
+def download_target(script, *args):
+    root = data_root(ROOT)
+    root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=root, prefix='.fetch-') as temporary:
+        result = Path(temporary) / 'result.json'
+        run_command([PY, str(ROOT / 'pipeline' / script), *map(str, args), '--result', str(result)], capture=True)
+        slug = json.loads(result.read_text())['slug']
+        episode_directory(root, slug)
+        return slug
+
+
 def main():
-    check_provider()   # 重活开始前先验证 provider 凭据，无效则立即中止
-    ap = argparse.ArgumentParser()
-    g = ap.add_mutually_exclusive_group()
-    g.add_argument("--cycle", action="store_true")
-    g.add_argument("--index", type=int)
-    g.add_argument("--url")
-    g.add_argument("--slug")
-    ap.add_argument("--show", default=None)
-    ap.add_argument("--workers", type=int,
-                    default=int(os.environ.get("CONVERT_WORKERS", "1")),
-                    help="并行处理的集数（每集内部转录再切片并行，注意总资源）")
-    args = ap.parse_args()
+    parser = argparse.ArgumentParser(description=__doc__)
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--cycle', action='store_true')
+    modes.add_argument('--index', type=int)
+    modes.add_argument('--url')
+    modes.add_argument('--slug')
+    parser.add_argument('--show')
+    parser.add_argument('--deadline', type=float, default=None, help='Whole-cycle UTC epoch deadline, including publication')
+    parser.add_argument('--publish-reserve-seconds', type=float, default=5400)
+    args = parser.parse_args()
+    deadline = args.deadline if args.deadline is not None else float(os.environ.get('BABEL_CYCLE_DEADLINE', time.time() + 20 * 3600))
+    reserve = args.publish_reserve_seconds
+    if not math.isfinite(reserve) or reserve < 0 or not math.isfinite(deadline) or deadline > time.time() + 20 * 3600 + 1:
+        parser.error('Deadline must be within 20 hours and publication reserve must be finite/nonnegative')
+    processing_deadline = deadline - reserve
+    previous = os.environ.get('BABEL_PROCESS_DEADLINE')
+    os.environ['BABEL_PROCESS_DEADLINE'] = str(processing_deadline)
+    try:
+        with work_deadline(processing_deadline):
+            check_provider()
+            if args.slug:
+                targets = iter([('slug', args.slug)])
+            elif args.url:
+                targets = iter([('video', args.url)])
+            elif args.index is not None:
+                if not args.show:
+                    parser.error('--index requires --show')
+                targets = iter([('rss', (get_show(args.show), args.index))])
+            else:
+                targets = (('rss', target) for target in cycle_targets())
+            for kind, target in targets:
+                remaining(processing_deadline)
+                started = time.monotonic()
+                if kind == 'slug':
+                    slug = target
+                elif kind == 'video':
+                    slug = download_target('fetch_video.py', target)
+                else:
+                    show, index = target
+                    slug = download_target('fetch.py', '--show', show['id'], '--download', index)
+                process(slug)
+                from completion import is_current
+                directory = episode_directory(data_root(ROOT), slug)
+                if not is_current(directory):
+                    raise RuntimeError('Processing ended without complete quality checks')
+                speech = json.loads((directory / 'speech.json').read_text())
+                record_stage(slug, 'processing-complete', time.monotonic() - started, True,
+                             outputAudioSeconds=speech['duration_seconds'], episodeCount=1,
+                             cpuThreads=int(os.environ.get('OMP_NUM_THREADS', '2')))
+    except BudgetExpired:
+        print('Processing budget reached; checkpoints retained and time reserved for publication')
+    except subprocess.CalledProcessError as error:
+        raise SystemExit(f'Pipeline stage failed (exit {error.returncode}); checkpoints retained') from None
+    finally:
+        if previous is None:
+            os.environ.pop('BABEL_PROCESS_DEADLINE', None)
+        else:
+            os.environ['BABEL_PROCESS_DEADLINE'] = previous
 
-    if args.slug:
-        slugs = [args.slug]
-    elif args.url:
-        out = subprocess.run(
-            [PY, str(ROOT / "pipeline" / "fetch_video.py"), args.url],
-            check=True, capture_output=True, text=True).stdout
-        slugs = [Path(out.strip().splitlines()[-1].split()[-1]).name]
-    elif args.index is not None:
-        if not args.show:
-            raise SystemExit("--index 需要 --show <id>")
-        slugs = [download(get_show(args.show), args.index)]
-    else:  # --cycle / 默认
-        targets = cycle_targets()
-        if not targets:
-            print("本周期没有需要处理的单集")
-            sys.exit(0)
-        print(f"\n本周期共 {len(targets)} 集待处理")
-        slugs = [download(show, i) for show, i in targets]
 
-    if len(slugs) > 1 and args.workers > 1:
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        print(f"并行处理 {len(slugs)} 集（workers={args.workers}）")
-        with ThreadPoolExecutor(max_workers=args.workers) as ex:
-            futs = {ex.submit(process, s): s for s in slugs}
-            for f in as_completed(futs):
-                f.result()          # 任一集失败立即抛出，终止本周期
-                print(f"episode done: {futs[f]}", flush=True)
-    else:
-        for slug in slugs:
-            process(slug)
-
-    run("build_feed.py")
-    print(f"\nDONE {len(slugs)} 集：{', '.join(slugs)}")
-    print("发布：bash pipeline/publish.sh")
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

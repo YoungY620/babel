@@ -5,11 +5,12 @@ so interview videos flow through the same audio-only pipeline.
 Usage:
   fetch_video.py <url> [--slug NAME]
 """
-import argparse, json, os, subprocess, sys
+import argparse, json, os, shutil, subprocess, sys
 from datetime import datetime, timezone
 from email.utils import format_datetime
 from pathlib import Path
 from paths import data_root, episode_directory, slugify
+from tts import save
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -22,6 +23,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("url")
     ap.add_argument("--slug", default=None)
+    ap.add_argument("--result", type=Path)
     args = ap.parse_args()
 
     extra = os.environ.get("YTDLP_EXTRA_ARGS", "").split()  # e.g. --cookies-from-browser chrome
@@ -41,11 +43,20 @@ def main():
     d = episode_directory(data_root(ROOT), slug)
     d.mkdir(parents=True, exist_ok=True)
 
-    # audio track only -> source.mp3 (voice-grade: mono, speech bitrate)
+    pending = d / '.video-download'
+    if pending.is_symlink():
+        raise ValueError('Video staging cannot be a symlink')
+    pending.mkdir(exist_ok=True)
+    # An interrupted conversion is not a completed MP3. Preserve resumable download parts.
+    (pending / 'source.mp3').unlink(missing_ok=True)
+    # Prefer the audio stream; never request bestvideo for an audio-only pipeline.
     subprocess.run([
-        YTDLP, "-x", "--audio-format", "mp3", "--audio-quality", "64K",
-        "--no-playlist", *extra, "-o", str(d / "source.%(ext)s"), args.url,
+        YTDLP, "-f", "bestaudio/best", "-x", "--audio-format", "mp3", "--audio-quality", "64K",
+        "--no-playlist", *extra, "-o", str(pending / "source.%(ext)s"), args.url,
     ], check=True)
+
+    (pending / "source.mp3").replace(d / "source.mp3")
+    shutil.rmtree(pending)
 
     upload = info.get("upload_date")  # YYYYMMDD
     if upload:
@@ -67,6 +78,8 @@ def main():
         "channel": info.get("uploader", ""),
     }
     (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2))
+    if args.result:
+        save(args.result, {"slug": slug})
     print(f"OK {d}  ({meta['duration']}, audio track only)")
 
 

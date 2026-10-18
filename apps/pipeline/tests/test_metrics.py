@@ -77,24 +77,23 @@ class ConvertRunMetricsTests(unittest.TestCase):
             root = Path(tmp).resolve()
             calls = []
 
-            def fake_run(argv, check, env):
-                calls.append((argv, check, env))
+            def fake_run(argv, *, env):
+                calls.append((argv, env))
 
-            def failing_run(argv, check, env):
+            def failing_run(argv, *, env):
                 raise subprocess.CalledProcessError(3, argv)
 
             with patch.dict(os.environ, {"BABEL_DATA_DIR": str(root)}, clear=True), \
-                    patch.object(convert, "subprocess", SimpleNamespace(run=fake_run)):
+                    patch.object(convert, "run_command", fake_run):
                 convert.run("transcribe.py", "ep-one")
             with self.assertRaises(subprocess.CalledProcessError), \
                     patch.dict(os.environ, {"BABEL_DATA_DIR": str(root)}), \
-                    patch.object(convert, "subprocess", SimpleNamespace(run=failing_run)):
+                    patch.object(convert, "run_command", failing_run):
                 convert.run("tts.py", "ep-one")
 
             self.assertEqual(len(calls), 1)
-            argv, check, env = calls[0]
+            argv, env = calls[0]
             self.assertEqual(argv[1].endswith("pipeline/transcribe.py"), True)
-            self.assertTrue(check)
             self.assertEqual(env.get("OMP_NUM_THREADS"), "2")
             records = tail_stage_records(stages_file(root))
             self.assertEqual(stages_file(root).read_text().count("\n"), 2)
@@ -110,8 +109,7 @@ class ConvertRunMetricsTests(unittest.TestCase):
             root = Path(tmp).resolve()
             ran = []
             with patch.dict(os.environ, {"BABEL_DATA_DIR": "relative"}), \
-                    patch.object(convert, "subprocess",
-                                 SimpleNamespace(run=lambda *a, **k: ran.append(a))), \
+                    patch.object(convert, "run_command", lambda *a, **k: ran.append(a)), \
                     contextlib.redirect_stderr(io.StringIO()) as err:
                 convert.run("polish.py", "ep-two")
             self.assertEqual(len(ran), 1)
